@@ -101,29 +101,29 @@ const Icons = {
 
 // ─── STYLES ───
 const getTheme = (dark) => ({
- bg: dark ? "#000000" : "#f2f3f5",
- bgCard: dark ? "#111118" : "#ffffff",
- bgCardAlt: dark ? "#18181f" : "#f8f9fb",
- bgInput: dark ? "#18181f" : "#ebedf0",
- text: dark ? "#f0f0f5" : "#0f1115",
- textSec: dark ? "#7a7a8e" : "#5a5d66",
- textTer: dark ? "#44444f" : "#a0a3aa",
- accent: dark ? "#25F4EE" : "#00b8b0",
- accentSoft: dark ? "#25F4EE15" : "#00b8b00d",
+ bg: dark ? "#09090b" : "#fafafa",
+ bgCard: dark ? "#131316" : "#ffffff",
+ bgCardAlt: dark ? "#19191d" : "#f5f5f7",
+ bgInput: dark ? "#19191d" : "#f0f0f2",
+ text: dark ? "#e4e4e7" : "#18181b",
+ textSec: dark ? "#71717a" : "#71717a",
+ textTer: dark ? "#3f3f46" : "#a1a1aa",
+ accent: dark ? "#e4e4e7" : "#18181b",
+ accentSoft: dark ? "#e4e4e710" : "#18181b08",
  pink: dark ? "#FE2C55" : "#e01240",
- pinkSoft: dark ? "#FE2C5515" : "#e012400d",
- green: dark ? "#2ee68a" : "#0d9f5f",
- greenSoft: dark ? "#2ee68a14" : "#0d9f5f0d",
- red: dark ? "#f45555" : "#d42828",
- redSoft: dark ? "#f4555514" : "#d428280d",
- yellow: dark ? "#f5c542" : "#c49200",
- yellowSoft: dark ? "#f5c54214" : "#c492000d",
- blue: dark ? "#5b9cf5" : "#2563eb",
- blueSoft: dark ? "#5b9cf514" : "#2563eb0d",
- border: dark ? "#1e1e28" : "#dcdee3",
- borderLight: dark ? "#161620" : "#eef0f3",
- shadow: dark ? "0 2px 16px rgba(0,0,0,.6)" : "0 2px 12px rgba(0,0,0,.04)",
- shadowLg: dark ? "0 12px 40px rgba(0,0,0,.7)" : "0 8px 30px rgba(0,0,0,.07)",
+ pinkSoft: dark ? "#FE2C5510" : "#e012400a",
+ green: dark ? "#4ade80" : "#16a34a",
+ greenSoft: dark ? "#4ade8012" : "#16a34a0a",
+ red: dark ? "#f87171" : "#dc2626",
+ redSoft: dark ? "#f8717112" : "#dc26260a",
+ yellow: dark ? "#facc15" : "#ca8a04",
+ yellowSoft: dark ? "#facc1512" : "#ca8a040a",
+ blue: dark ? "#60a5fa" : "#2563eb",
+ blueSoft: dark ? "#60a5fa12" : "#2563eb0a",
+ border: dark ? "#1f1f23" : "#e4e4e7",
+ borderLight: dark ? "#18181b" : "#f4f4f5",
+ shadow: dark ? "none" : "0 1px 3px rgba(0,0,0,.04)",
+ shadowLg: dark ? "0 8px 30px rgba(0,0,0,.4)" : "0 4px 20px rgba(0,0,0,.06)",
 });
 
 const BASE_CATEGORIES = ["Creator Rewards", "TikTok Shop", "Publico Latino", "Publico Arabe"];
@@ -291,24 +291,24 @@ export default function App() {
    <div style={{
     height: "100vh", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    background: "#000000",
+    background: "#09090b",
     fontFamily: "'SF Pro Display', -apple-system, sans-serif",
    }}>
     <img src="/logo-icon.png" alt="Cimmaron" style={{
-     width: 80, height: 80, borderRadius: 20, marginBottom: 20,
+     width: 64, height: 64, marginBottom: 20,
      animation: "pulse 1.5s ease-in-out infinite",
     }} />
     <div style={{
-     fontSize: 28, fontWeight: 800, color: "#fff",
+     fontSize: 24, fontWeight: 700, color: "#e4e4e7",
      letterSpacing: 1,
     }}>Cimmaron</div>
-    <div style={{ fontSize: 11, color: "#7a7a8e", marginTop: 6, letterSpacing: 3, textTransform: "uppercase" }}>
+    <div style={{ fontSize: 10, color: "#52525b", marginTop: 6, letterSpacing: 3, textTransform: "uppercase" }}>
      Inventory Manager
     </div>
     <div style={{
-     marginTop: 32, width: 40, height: 3,
-     background: "linear-gradient(90deg, #25F4EE, #FE2C55)",
-     borderRadius: 2, animation: "loading 1s ease-in-out infinite",
+     marginTop: 32, width: 40, height: 2,
+     background: "#e4e4e7",
+     borderRadius: 1, animation: "loading 1s ease-in-out infinite",
     }} />
     <style>{`
      @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
@@ -378,6 +378,7 @@ export default function App() {
      {tab === "home" && <HomeScreen accounts={accounts} t={t} dark={dark} onSelect={setSelectedAccount} />}
      {tab === "stock" && (
       <StockScreen accounts={accounts} t={t} dark={dark}
+       countries={countries}
        onSelect={setSelectedAccount}
        onAdd={() => { setEditingAccount(null); setShowForm(true); }}
        onBulkSell={async (ids, totalPrice) => {
@@ -463,18 +464,18 @@ export default function App() {
        style={{
         position: "fixed", bottom: 90, right: "calc(50% - 195px)",
         height: 48, borderRadius: 24, paddingLeft: 18, paddingRight: 22,
-        background: "#000", border: "1px solid #25F4EE40",
+        background: t.text, border: "none",
         cursor: "pointer", zIndex: 101,
         display: "flex", alignItems: "center", gap: 8,
-        boxShadow: "0 4px 24px rgba(0,0,0,.5), 0 0 0 1px rgba(37,244,238,.15)",
+        boxShadow: t.shadowLg,
         transition: "transform .2s",
-        color: "#25F4EE",
+        color: t.bg,
        }}
        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
        {Icons.plus}
-       <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Agregar</span>
+       <span style={{ fontSize: 13, fontWeight: 600, color: t.bg }}>Agregar</span>
       </button>
      )}
     </>
@@ -716,8 +717,8 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
        style={{
         flex: 1, padding: "8px 4px", borderRadius: 10, border: "none",
         cursor: "pointer", fontSize: 11, fontWeight: 700,
-        background: period === p ? t.accent : "transparent",
-        color: period === p ? "#fff" : t.textSec,
+        background: period === p ? t.text : "transparent",
+        color: period === p ? t.bg : t.textSec,
         transition: "all .2s",
        }}
       >{periodLabels[p]}</button>
@@ -932,7 +933,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
 }
 
 // ─── STOCK SCREEN ───
-function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDisqualify }) {
+function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDisqualify, countries }) {
  const [filter, setFilter] = useState("all");
  const [query, setQuery] = useState("");
  const [selectMode, setSelectMode] = useState(false);
@@ -1023,8 +1024,8 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
        padding: "6px 14px", borderRadius: 20, border: "none",
        cursor: "pointer", fontSize: 12, fontWeight: 600,
        whiteSpace: "nowrap",
-       background: filter === f.id ? t.accent : t.bgInput,
-       color: filter === f.id ? "#fff" : t.textSec,
+       background: filter === f.id ? t.text : t.bgInput,
+       color: filter === f.id ? t.bg : t.textSec,
        transition: "all .2s",
       }}
      >
@@ -1135,22 +1136,37 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
        Imagenes
       </button>
      </div>
-     <div style={{ display: "flex", gap: 6 }}>
+     <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
       <button onClick={() => setShowBulkSell(true)} style={{
-       flex: 1, padding: 10, borderRadius: 10, border: "none",
-       background: t.greenSoft, cursor: "pointer",
-       color: t.green, fontSize: 11, fontWeight: 700,
+       flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
+       background: t.bgCard, cursor: "pointer",
+       color: t.green, fontSize: 11, fontWeight: 600,
       }}>
        Vender ({selected.length})
       </button>
       <button onClick={() => { onBulkDisqualify(selected); exitSelectMode(); }} style={{
-       flex: 1, padding: 10, borderRadius: 10, border: "none",
-       background: t.redSoft, cursor: "pointer",
-       color: t.red, fontSize: 11, fontWeight: 700,
+       flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
+       background: t.bgCard, cursor: "pointer",
+       color: t.red, fontSize: 11, fontWeight: 600,
       }}>
        Descalificar
       </button>
      </div>
+     <button onClick={() => {
+      const text = selectedAccounts.filter(a => a.status === "available").map(a => {
+       const flag = countries.find(c => c.name === a.country)?.emoji || "";
+       const cats = (a.categories || []).join(", ") || "—";
+       return `*CUENTA DISPONIBLE*\n───────────────\nRegión: ${flag} ${a.country || "—"}\nCategoría: ${cats}\nSeguidores: ${fmtK(a.followers)}\nNicho: ${a.niche || "—"}\nPrecio: ${fmt(a.estimatedSalePrice || 0)}\n───────────────`;
+      }).join("\n\n");
+      if (text) { navigator.clipboard.writeText(text); alert(`${selectedAccounts.filter(a => a.status === "available").length} cuentas copiadas para revendedores`); }
+      else { alert("No hay cuentas disponibles seleccionadas"); }
+     }} style={{
+      width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
+      background: t.bgCard, cursor: "pointer",
+      color: t.text, fontSize: 11, fontWeight: 600,
+     }}>
+      Copiar para revendedores
+     </button>
     </div>
    )}
 
@@ -1718,7 +1734,6 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    if (data.profileName) setForm((f) => ({ ...f, profileName: data.profileName }));
    if (data.followers) setForm((f) => ({ ...f, followers: data.followers }));
    if (data.niche) setForm((f) => ({ ...f, niche: data.niche }));
-   if (data.categories?.length) setForm((f) => ({ ...f, categories: data.categories }));
   } catch (e) {
    setAiError("Error IA: " + (e.message || "No se pudo analizar"));
   }
@@ -2157,8 +2172,8 @@ function ReportsScreen({ accounts, t, dark }) {
       style={{
        flex: 1, padding: 10, borderRadius: 10, border: "none",
        cursor: "pointer", fontSize: 13, fontWeight: 700,
-       background: view === v.id ? t.accent : "transparent",
-       color: view === v.id ? "#fff" : t.textSec,
+       background: view === v.id ? t.text : "transparent",
+       color: view === v.id ? t.bg : t.textSec,
        transition: "all .2s",
       }}
      >{v.label}</button>
@@ -2173,21 +2188,35 @@ function ReportsScreen({ accounts, t, dark }) {
       <BarChart data={dailyData} />
      </Card>
      {dailyData.map((d, i) => (
-      <Card t={t} key={i} style={{ marginBottom: 8, padding: 12 }}>
-       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-         <div style={{ fontSize: 13, fontWeight: 700 }}>{d.label}</div>
-         <div style={{ fontSize: 11, color: t.textSec }}>
-          {d.sold} vendida{d.sold !== 1 ? "s" : ""} • {d.disq} desc.
-         </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-         <div style={{ fontSize: 15, fontWeight: 800, color: d.net >= 0 ? t.green : t.red }}>
-          {fmt(d.net)}
-         </div>
-         {d.revenue > 0 && <div style={{ fontSize: 10, color: t.textSec }}>Ingreso: {fmt(d.revenue)}</div>}
+      <Card t={t} key={i} style={{ marginBottom: 8, padding: 14 }}>
+       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>{d.label}</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: d.net >= 0 ? t.green : t.red }}>
+         {d.net >= 0 ? "+" : ""}{fmt(d.net)}
         </div>
        </div>
+       {(d.sold > 0 || d.disq > 0) ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 11 }}>
+         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
+          <div style={{ color: t.textSec }}>Vendidas</div>
+          <div style={{ fontWeight: 700, marginTop: 2 }}>{d.sold}</div>
+         </div>
+         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
+          <div style={{ color: t.textSec }}>Ingresos</div>
+          <div style={{ fontWeight: 700, marginTop: 2, color: t.green }}>{fmt(d.revenue)}</div>
+         </div>
+         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
+          <div style={{ color: t.textSec }}>Descalificadas</div>
+          <div style={{ fontWeight: 700, marginTop: 2 }}>{d.disq}</div>
+         </div>
+         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
+          <div style={{ color: t.textSec }}>Pérdidas</div>
+          <div style={{ fontWeight: 700, marginTop: 2, color: d.losses > 0 ? t.red : t.textSec }}>{fmt(d.losses)}</div>
+         </div>
+        </div>
+       ) : (
+        <div style={{ fontSize: 11, color: t.textTer }}>Sin actividad</div>
+       )}
       </Card>
      ))}
      {dailyData.every((d) => d.sold === 0 && d.disq === 0) && (
@@ -2677,7 +2706,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
    {/* About */}
    <Card t={t} style={{ marginBottom: 16, textAlign: "center", padding: 24 }}>
-    <img src="/logo-full.png" alt="Cimmaron" style={{ width: 180, marginBottom: 12, borderRadius: 8 }} />
+    <img src="/logo-full.png" alt="Cimmaron" style={{ width: 160, marginBottom: 12 }} />
     <div style={{ fontSize: 11, color: t.textSec, letterSpacing: 2, marginTop: 4 }}>
      INVENTORY MANAGER
     </div>
