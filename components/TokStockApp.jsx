@@ -101,27 +101,27 @@ const Icons = {
 
 // ─── STYLES ───
 const getTheme = (dark) => ({
- bg: dark ? "#0f1117" : "#f8f9fb",
- bgCard: dark ? "#181a22" : "#ffffff",
- bgCardAlt: dark ? "#1e2029" : "#f3f4f6",
- bgInput: dark ? "#1e2029" : "#eef0f4",
- text: dark ? "#f1f2f4" : "#111827",
- textSec: dark ? "#8b8fa3" : "#6b7280",
- textTer: dark ? "#4b4f63" : "#9ca3af",
- accent: dark ? "#818cf8" : "#6366f1",
- accentSoft: dark ? "#818cf815" : "#6366f10c",
- green: dark ? "#34d399" : "#059669",
- greenSoft: dark ? "#34d39915" : "#0596690c",
- red: dark ? "#fb7185" : "#e11d48",
- redSoft: dark ? "#fb718515" : "#e11d480c",
- yellow: dark ? "#fbbf24" : "#d97706",
- yellowSoft: dark ? "#fbbf2415" : "#d977060c",
- blue: dark ? "#60a5fa" : "#2563eb",
- blueSoft: dark ? "#60a5fa15" : "#2563eb0c",
- border: dark ? "#252836" : "#e5e7eb",
- borderLight: dark ? "#1c1f2b" : "#f3f4f6",
- shadow: dark ? "0 2px 8px rgba(0,0,0,.3)" : "0 1px 3px rgba(0,0,0,.06)",
- shadowLg: dark ? "0 8px 24px rgba(0,0,0,.4)" : "0 4px 16px rgba(0,0,0,.08)",
+ bg: dark ? "#111111" : "#f5f5f5",
+ bgCard: dark ? "#1a1a1a" : "#ffffff",
+ bgCardAlt: dark ? "#202020" : "#fafafa",
+ bgInput: dark ? "#202020" : "#eeeeee",
+ text: dark ? "#ececec" : "#1a1a1a",
+ textSec: dark ? "#888888" : "#666666",
+ textTer: dark ? "#555555" : "#aaaaaa",
+ accent: dark ? "#4a9eff" : "#2680eb",
+ accentSoft: dark ? "#4a9eff15" : "#2680eb0c",
+ green: dark ? "#4cd964" : "#28a745",
+ greenSoft: dark ? "#4cd96412" : "#28a7450a",
+ red: dark ? "#ff6b6b" : "#dc3545",
+ redSoft: dark ? "#ff6b6b12" : "#dc35450a",
+ yellow: dark ? "#ffc107" : "#e6a800",
+ yellowSoft: dark ? "#ffc10712" : "#e6a8000a",
+ blue: dark ? "#4a9eff" : "#2680eb",
+ blueSoft: dark ? "#4a9eff12" : "#2680eb0a",
+ border: dark ? "#2a2a2a" : "#e0e0e0",
+ borderLight: dark ? "#222222" : "#f0f0f0",
+ shadow: dark ? "0 2px 8px rgba(0,0,0,.4)" : "0 1px 4px rgba(0,0,0,.06)",
+ shadowLg: dark ? "0 8px 24px rgba(0,0,0,.5)" : "0 4px 16px rgba(0,0,0,.08)",
 });
 
 
@@ -140,6 +140,7 @@ export default function App() {
  const [editingAccount, setEditingAccount] = useState(null);
  const [notification, setNotification] = useState(null);
  const [whatsappTemplate, setWhatsappTemplate] = useState("");
+ const [menuOpen, setMenuOpen] = useState(false);
 
  const t = getTheme(dark);
 
@@ -288,12 +289,12 @@ export default function App() {
    <div style={{
     height: "100vh", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    background: "#0f1117",
+    background: "#111111",
     fontFamily: "'SF Pro Display', -apple-system, sans-serif",
    }}>
     <div style={{
      width: 32, height: 3,
-     background: "linear-gradient(90deg, #818cf8, #6366f1)",
+     background: "linear-gradient(90deg, #4a9eff, #2680eb)",
      borderRadius: 2, animation: "loading 1.2s ease-in-out infinite",
     }} />
     <style>{`
@@ -353,7 +354,7 @@ export default function App() {
    ) : showForm ? (
     <AccountForm
      t={t} dark={dark} countries={countries} categories={categories}
-     aiProviders={aiProviders} account={editingAccount}
+     aiProviders={aiProviders} account={editingAccount} accounts={accounts}
      onSave={(acc) => {
       if (editingAccount) { updateAccount({ ...editingAccount, ...acc }); }
       else { addAccount(acc); }
@@ -411,40 +412,68 @@ export default function App() {
       />
      )}
 
-     {/* Bottom Tab Bar */}
-     <div style={{
-      position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-      maxWidth: 440, width: "100%", zIndex: 100,
-      background: t.bgCard, borderTop: `1px solid ${t.border}`,
-      display: "flex", justifyContent: "space-around",
-      padding: "8px 0 calc(12px + env(safe-area-inset-bottom, 8px))",
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-     }}>
-      {[
-       { id: "home", label: "Inicio" },
-       { id: "stock", label: "Stock" },
-       { id: "reports", label: "Reportes" },
-       { id: "search", label: "Buscar" },
-       { id: "config", label: "Config" },
-      ].map((t2) => (
-       <button
-        key={t2.id}
-        onClick={() => setTab(t2.id)}
-        style={{
-         background: "none", border: "none", cursor: "pointer",
-         display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-         color: tab === t2.id ? t.accent : t.textSec,
-         opacity: tab === t2.id ? 1 : 0.5,
-         transition: "all .2s",
-         padding: "4px 0",
-        }}
-       >
-        <span style={{ fontSize: 10, fontWeight: tab === t2.id ? 700 : 500 }}>{t2.label}</span>
-        {tab === t2.id && <div style={{ width: 16, height: 2, borderRadius: 1, background: t.accent, marginTop: 2 }} />}
-       </button>
-      ))}
-     </div>
+     {/* Menu Toggle Button */}
+     <button
+      onClick={() => setMenuOpen(!menuOpen)}
+      style={{
+       position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+       paddingBottom: "env(safe-area-inset-bottom, 0px)",
+       height: 44, paddingLeft: 20, paddingRight: 20,
+       borderRadius: 22, border: `1px solid ${t.border}`,
+       background: t.bgCard, cursor: "pointer", zIndex: 110,
+       display: "flex", alignItems: "center", gap: 8,
+       boxShadow: t.shadowLg,
+       color: t.text, fontSize: 13, fontWeight: 600,
+      }}
+     >
+      <span>{["Inicio", "Stock", "Reportes", "Buscar", "Config"][["home","stock","reports","search","config"].indexOf(tab)]}</span>
+      <span style={{ fontSize: 10, color: t.textSec, transition: "transform .2s", transform: menuOpen ? "rotate(180deg)" : "none" }}>▼</span>
+     </button>
+
+     {/* Slide-up Menu */}
+     {menuOpen && (
+      <>
+       <div onClick={() => setMenuOpen(false)} style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 108,
+       }} />
+       <div style={{
+        position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
+        maxWidth: 440, width: "100%", zIndex: 109,
+        background: t.bgCard, borderTop: `1px solid ${t.border}`,
+        borderRadius: "20px 20px 0 0",
+        padding: "16px 20px calc(20px + env(safe-area-inset-bottom, 8px))",
+        boxShadow: t.shadowLg,
+        animation: "slideUp .2s ease",
+       }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto 16px" }} />
+        {[
+         { id: "home", label: "Inicio", desc: "Panel general" },
+         { id: "stock", label: "Stock", desc: "Inventario de cuentas" },
+         { id: "reports", label: "Reportes", desc: "Estadísticas y ganancias" },
+         { id: "search", label: "Buscar", desc: "Encontrar cuentas" },
+         { id: "config", label: "Configuración", desc: "Ajustes de la app" },
+        ].map((item) => (
+         <button
+          key={item.id}
+          onClick={() => { setTab(item.id); setMenuOpen(false); }}
+          style={{
+           width: "100%", padding: "12px 14px", borderRadius: 12,
+           border: "none", cursor: "pointer",
+           background: tab === item.id ? t.accentSoft : "transparent",
+           display: "flex", justifyContent: "space-between", alignItems: "center",
+           marginBottom: 4,
+          }}
+         >
+          <div style={{ textAlign: "left" }}>
+           <div style={{ fontSize: 14, fontWeight: 600, color: tab === item.id ? t.accent : t.text }}>{item.label}</div>
+           <div style={{ fontSize: 11, color: t.textSec, marginTop: 1 }}>{item.desc}</div>
+          </div>
+          {tab === item.id && <div style={{ width: 6, height: 6, borderRadius: 3, background: t.accent }} />}
+         </button>
+        ))}
+       </div>
+      </>
+     )}
 
      {/* FAB Add button */}
      {(tab === "home" || tab === "stock") && (
@@ -473,6 +502,7 @@ export default function App() {
    <style>{`
     @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 100%); } to { opacity: 1; transform: translate(-50%, 0); } }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     input, select, textarea { font-family: inherit; }
     ::-webkit-scrollbar { width: 0; }
@@ -1755,10 +1785,11 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
 }
 
 // ─── ACCOUNT FORM (3 Steps) ───
-function AccountForm({ t, dark, countries, categories, aiProviders, account, onSave, onCancel }) {
+function AccountForm({ t, dark, countries, categories, aiProviders, account, onSave, onCancel, accounts }) {
  const [step, setStep] = useState(1);
  const [analyzing, setAnalyzing] = useState(false);
  const [aiError, setAiError] = useState("");
+ const [dupWarning, setDupWarning] = useState(null);
  const [form, setForm] = useState({
   username: account?.username || "",
   profileName: account?.profileName || "",
@@ -1778,6 +1809,22 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
  });
 
  const upd = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+ // Duplicate detection
+ const checkDuplicate = useCallback((field, value) => {
+  if (!value || !accounts?.length) return;
+  const editingId = account?.id;
+  const match = accounts.find(a =>
+   a.id !== editingId &&
+   ((field === "email" && a.email && a.email.toLowerCase() === value.toLowerCase()) ||
+    (field === "username" && a.username && a.username.toLowerCase() === value.replace("@","").toLowerCase()))
+  );
+  if (match) {
+   setDupWarning(`⚠️ ${field === "email" ? "Email" : "Usuario"} ya registrado en @${match.username || "?"} (${match.status === "sold" ? "vendida" : match.status === "disqualified" ? "descalificada" : "disponible"})`);
+  } else {
+   setDupWarning(null);
+  }
+ }, [accounts, account]);
 
  const toggleCategory = (cat) => {
   const cur = form.categories;
@@ -1830,6 +1877,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    if (data.username) {
     const cleanUser = data.username.replace("@", "");
     setForm((f) => ({ ...f, username: cleanUser, profileLink: `https://www.tiktok.com/@${cleanUser}` }));
+    checkDuplicate("username", cleanUser);
    }
    if (data.profileName) setForm((f) => ({ ...f, profileName: data.profileName }));
    if (data.followers) setForm((f) => ({ ...f, followers: data.followers }));
@@ -1867,7 +1915,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    </div>
 
    {/* Step Indicator */}
-   <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+   <div style={{ display: "flex", gap: 8, marginBottom: dupWarning ? 10 : 20 }}>
     {[1, 2, 3].map((s) => (
      <div key={s} style={{
       flex: 1, height: 4, borderRadius: 2,
@@ -1876,6 +1924,17 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
      }} />
     ))}
    </div>
+
+   {/* Duplicate Warning */}
+   {dupWarning && (
+    <div style={{
+     padding: "10px 14px", borderRadius: 10, marginBottom: 14,
+     background: t.yellowSoft, border: `1px solid ${t.yellow}30`,
+     fontSize: 12, color: t.yellow, fontWeight: 600, lineHeight: 1.4,
+    }}>
+     {dupWarning}
+    </div>
+   )}
 
    {/* Step 1: Image */}
    {step === 1 && (
@@ -1965,6 +2024,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
      <input placeholder="@usuario" value={form.username} onChange={(e) => {
       const val = e.target.value.replace("@", "");
       setForm((f) => ({ ...f, username: val, profileLink: val ? `https://www.tiktok.com/@${val}` : "" }));
+      checkDuplicate("username", val);
      }} style={inputStyle} />
 
      <label style={labelStyle}>Nombre del perfil</label>
@@ -2054,7 +2114,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Credenciales</div>
 
      <label style={labelStyle}>Email de la cuenta</label>
-     <input type="email" placeholder="email@ejemplo.com" value={form.email} onChange={(e) => upd("email", e.target.value)} style={inputStyle} />
+     <input type="email" placeholder="email@ejemplo.com" value={form.email} onChange={(e) => { upd("email", e.target.value); checkDuplicate("email", e.target.value); }} style={inputStyle} />
 
      <label style={labelStyle}>Contraseña de TikTok</label>
      <input type="text" placeholder="Contraseña" value={form.tiktokPassword} onChange={(e) => upd("tiktokPassword", e.target.value)} style={inputStyle} />
