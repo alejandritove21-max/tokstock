@@ -124,7 +124,6 @@ const getTheme = (dark) => ({
  shadowLg: dark ? "0 8px 24px rgba(0,0,0,.4)" : "0 4px 16px rgba(0,0,0,.08)",
 });
 
-const BASE_CATEGORIES = ["Creator Rewards", "TikTok Shop", "Publico Latino", "Publico Arabe"];
 
 // ─── MAIN APP ───
 export default function App() {
@@ -289,24 +288,16 @@ export default function App() {
    <div style={{
     height: "100vh", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    background: "linear-gradient(180deg, #0f1117 0%, #161a26 100%)",
+    background: "#0f1117",
     fontFamily: "'SF Pro Display', -apple-system, sans-serif",
    }}>
-    <div style={{ fontSize: 40, marginBottom: 16, animation: "pulse 2s ease-in-out infinite" }}>📦</div>
     <div style={{
-     fontSize: 22, fontWeight: 700, color: "#f1f2f4",
-    }}>Stock de Cuentas</div>
-    <div style={{ fontSize: 10, color: "#6b7280", marginTop: 6, letterSpacing: 2 }}>
-     TikTok Inventory
-    </div>
-    <div style={{
-     marginTop: 28, width: 36, height: 3,
+     width: 32, height: 3,
      background: "linear-gradient(90deg, #818cf8, #6366f1)",
      borderRadius: 2, animation: "loading 1.2s ease-in-out infinite",
     }} />
     <style>{`
-     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-     @keyframes loading { 0%,100% { width: 36px; opacity: .3; } 50% { width: 64px; opacity: 1; } }
+     @keyframes loading { 0%,100% { width: 32px; opacity: .3; } 50% { width: 56px; opacity: 1; } }
     `}</style>
    </div>
   );
@@ -431,11 +422,11 @@ export default function App() {
       WebkitBackdropFilter: "blur(20px)",
      }}>
       {[
-       { id: "home", label: "🏠 Inicio" },
-       { id: "stock", label: "📦 Stock" },
-       { id: "reports", label: "📊 Reportes" },
-       { id: "search", label: "🔍 Buscar" },
-       { id: "config", label: "⚙️ Config" },
+       { id: "home", label: "Inicio" },
+       { id: "stock", label: "Stock" },
+       { id: "reports", label: "Reportes" },
+       { id: "search", label: "Buscar" },
+       { id: "config", label: "Config" },
       ].map((t2) => (
        <button
         key={t2.id}
@@ -649,29 +640,25 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
  return (
   <div style={{ padding: "16px 16px 0" }}>
    {/* Header */}
-   <div style={{ marginBottom: 16 }}>
+   <div style={{ marginBottom: 14 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-     <div>
-      <div style={{ fontSize: 20, fontWeight: 800 }}>📦 Stock de Cuentas</div>
-      <div style={{ fontSize: 11, color: t.textSec, marginTop: 2, textTransform: "capitalize" }}>{todayDate}</div>
-     </div>
+     <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{
-      padding: "4px 10px", borderRadius: 20,
+      padding: "3px 8px", borderRadius: 12,
       background: dbConnected ? t.greenSoft : t.redSoft,
-      border: `1px solid ${dbConnected ? t.green : t.red}20`,
       display: "flex", alignItems: "center", gap: 4,
      }}>
-      <div style={{ width: 5, height: 5, borderRadius: 3, background: dbConnected ? t.green : t.red }} />
+      <div style={{ width: 4, height: 4, borderRadius: 2, background: dbConnected ? t.green : t.red }} />
       <span style={{ fontSize: 9, fontWeight: 600, color: dbConnected ? t.green : t.red }}>{dbConnected ? "Sync" : "Off"}</span>
      </div>
     </div>
     {locationInfo && (
      <div style={{
-      marginTop: 10, padding: "8px 12px", borderRadius: 10,
+      marginTop: 8, padding: "7px 10px", borderRadius: 8,
       background: t.bgCard, border: `1px solid ${t.border}`,
-      display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: t.textSec,
+      display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.textSec,
      }}>
-      <span style={{ fontSize: 16 }}>{locationInfo.flag}</span>
+      <span>{locationInfo.flag}</span>
       <span style={{ fontWeight: 600, color: t.text }}>{locationInfo.country}</span>
       <span style={{ flex: 1 }} />
       <span style={{ fontFamily: "monospace", fontSize: 10, color: t.textTer }}>{locationInfo.ip}</span>
@@ -873,15 +860,15 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
    </div>
    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
     {[
-     { label: "Total", value: accounts.length, emoji: "📊" },
-     { label: "Disponibles", value: stats.avail.length, emoji: "🟢" },
-     { label: "Vendidas", value: stats.sold.length, emoji: "💰", sub: fmt(stats.totalRevenue) },
-     { label: "Invertido", value: fmt(stats.totalInvested), emoji: "📈" },
+     { label: "Total", value: accounts.length, dot: t.accent },
+     { label: "Disponibles", value: stats.avail.length, dot: t.green },
+     { label: "Vendidas", value: stats.sold.length, dot: t.blue, sub: fmt(stats.totalRevenue) },
+     { label: "Invertido", value: fmt(stats.totalInvested), dot: t.yellow },
     ].map((s, i) => (
      <Card t={t} key={i} style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
        <span style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>{s.label}</span>
-       <span style={{ fontSize: 14 }}>{s.emoji}</span>
+       <div style={{ width: 6, height: 6, borderRadius: 3, background: s.dot }} />
       </div>
       <div style={{ fontSize: 20, fontWeight: 800 }}>{s.value}</div>
       {s.sub && <div style={{ fontSize: 11, color: t.green, fontWeight: 600, marginTop: 2 }}>{s.sub}</div>}
@@ -980,7 +967,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
  return (
   <div style={{ padding: "16px 16px 0" }}>
    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-    <div style={{ fontSize: 26, fontWeight: 800 }}>📋 Inventario</div>
+    <div style={{ fontSize: 26, fontWeight: 800 }}>Inventario</div>
     <button
      onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
      style={{
@@ -1286,7 +1273,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
       maxWidth: 320, width: "100%", textAlign: "center",
       border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>🚫</div>
+      <div style={{ fontSize: 14, marginBottom: 8, color: t.red, fontWeight: 700 }}>Descalificar</div>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Descalificar {selected.length} cuentas?</div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>Se registrarán como pérdidas. Esta acción no se puede deshacer fácilmente.</div>
       <div style={{ display: "flex", gap: 8 }}>
@@ -1436,7 +1423,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
    {/* Public Data */}
    <Card t={t} style={{ marginBottom: 12 }}>
     <div style={{ fontSize: 12, fontWeight: 700, color: t.accent, marginBottom: 10, letterSpacing: 1 }}>
-     📋 DATOS PÚBLICOS
+     DATOS PÚBLICOS
     </div>
     {[
      ["Perfil", a.profileName],
@@ -1470,7 +1457,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
    {/* Financial Data */}
    <Card t={t} style={{ marginBottom: 12 }}>
     <div style={{ fontSize: 12, fontWeight: 700, color: t.green, marginBottom: 10, letterSpacing: 1 }}>
-     💰 DATOS FINANCIEROS
+     DATOS FINANCIEROS
     </div>
     {[
      ["Precio de Compra", fmt(a.purchasePrice), t.text],
@@ -1634,7 +1621,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       background: t.bgCard, borderRadius: 20, padding: 24,
       maxWidth: 360, width: "100%", border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>💰 Registrar Venta</div>
+      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Registrar Venta</div>
       <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
        Precio de compra: {fmt(a.purchasePrice)}
       </div>
@@ -1688,7 +1675,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       maxWidth: 320, width: "100%", textAlign: "center",
       border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>🗑️</div>
+      <div style={{ fontSize: 14, marginBottom: 8, color: t.red, fontWeight: 700 }}>Eliminar</div>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Eliminar cuenta?</div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>@{a.username} — Esta acción no se puede deshacer</div>
       <div style={{ display: "flex", gap: 8 }}>
@@ -1717,7 +1704,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       maxWidth: 320, width: "100%", textAlign: "center",
       border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>🚫</div>
+      <div style={{ fontSize: 14, marginBottom: 8, color: t.red, fontWeight: 700 }}>Descalificar</div>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Descalificar cuenta?</div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 4 }}>@{a.username}</div>
       <div style={{ fontSize: 12, color: t.textTer, marginBottom: 16 }}>Se registrará como pérdida de {fmt(a.purchasePrice)}</div>
@@ -1747,7 +1734,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       maxWidth: 320, width: "100%", textAlign: "center",
       border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>♻️</div>
+      <div style={{ fontSize: 14, marginBottom: 8, color: t.green, fontWeight: 700 }}>Restaurar</div>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Restaurar cuenta?</div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>@{a.username} volverá al estado "Disponible"</div>
       <div style={{ display: "flex", gap: 8 }}>
@@ -1893,7 +1880,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    {/* Step 1: Image */}
    {step === 1 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📸 Captura de Pantalla</div>
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Captura de Pantalla</div>
      <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
       Sube un screenshot del perfil TikTok (opcional)
      </div>
@@ -1972,7 +1959,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    {/* Step 2: General Data */}
    {step === 2 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>📝 Datos Generales</div>
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Datos Generales</div>
 
      <label style={labelStyle}>Nombre de usuario</label>
      <input placeholder="@usuario" value={form.username} onChange={(e) => {
@@ -2025,7 +2012,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
       {NICHES.map((n, i) => <option key={i} value={n}>{n}</option>)}
      </select>
 
-     <label style={labelStyle}>🏷️ Categorías</label>
+     <label style={labelStyle}>Categorías</label>
      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
       {categories.map((c, i) => (
        <button
@@ -2064,7 +2051,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    {/* Step 3: Credentials */}
    {step === 3 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>🔐 Credenciales</div>
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Credenciales</div>
 
      <label style={labelStyle}>Email de la cuenta</label>
      <input type="email" placeholder="email@ejemplo.com" value={form.email} onChange={(e) => upd("email", e.target.value)} style={inputStyle} />
@@ -2270,7 +2257,7 @@ function ReportsScreen({ accounts, t, dark }) {
 
  return (
   <div style={{ padding: "16px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>📊 Reportes</div>
+   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Reportes</div>
 
    {/* View Selector */}
    <div style={{ display: "flex", gap: 4, marginBottom: 16, background: t.bgInput, borderRadius: 12, padding: 4 }}>
@@ -2414,7 +2401,7 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
 
  return (
   <div style={{ padding: "16px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>🔍 Buscar</div>
+   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Buscar</div>
 
    <div style={{
     display: "flex", alignItems: "center", gap: 8,
@@ -2459,7 +2446,7 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
 
    {!query && (
     <Card t={t} style={{ textAlign: "center", padding: 32 }}>
-     <div style={{ fontSize: 14, marginBottom: 8, color: t.textSec }}>🔍 Buscar</div>
+     <div style={{ fontSize: 14, marginBottom: 8, color: t.textSec }}>Buscar</div>
      <div style={{ fontSize: 14, fontWeight: 600, color: t.textSec }}>
       Escribe para buscar cuentas
      </div>
@@ -2488,7 +2475,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>🌍 Países</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>Países</div>
     </div>
 
     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -2531,7 +2518,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>🏷️ Categorías</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>Categorías</div>
     </div>
 
     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -2548,25 +2535,17 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      }}>+</button>
     </div>
 
-    {categories.map((c, i) => {
-     const isBase = BASE_CATEGORIES.includes(c);
-     return (
+    {categories.map((c, i) => (
      <Card t={t} key={i} style={{ marginBottom: 6, padding: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{c}</span>
-        {isBase && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: t.accentSoft, color: t.accent, fontWeight: 700 }}>BASE</span>}
-       </div>
-       {!isBase && (
+       <span style={{ fontSize: 14, fontWeight: 600 }}>{c}</span>
        <button onClick={() => saveCategories(categories.filter((_, j) => j !== i))}
         style={{ background: "none", border: "none", cursor: "pointer", color: t.red }}>
         {Icons.trash}
        </button>
-       )}
       </div>
      </Card>
-     );
-    })}
+    ))}
    </div>
   );
  }
@@ -2581,7 +2560,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>📲 Formato de Entrega</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>Formato de Entrega</div>
     </div>
 
     <div style={{ fontSize: 12, color: t.textSec, marginBottom: 12 }}>
@@ -2643,7 +2622,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>🤖 Inteligencia Artificial</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>Inteligencia Artificial</div>
     </div>
 
     <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
@@ -2717,7 +2696,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
  return (
   <div style={{ padding: "16px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>⚙️ Configuración</div>
+   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Configuración</div>
 
    {/* Connection Status */}
    <Card t={t} style={{ marginBottom: 10 }}>
@@ -2765,7 +2744,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>🤖 Inteligencia Artificial</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>Inteligencia Artificial</div>
        <div style={{ fontSize: 11, color: t.textSec }}>
         {aiProviders.filter((p) => p.active).length} proveedor(es) activo(s)
        </div>
@@ -2781,7 +2760,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>📲 Formato de Entrega</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>Formato de Entrega</div>
        <div style={{ fontSize: 11, color: t.textSec }}>Personalizar mensaje de WhatsApp</div>
       </div>
      </div>
@@ -2795,7 +2774,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>🌍 Países</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>Países</div>
        <div style={{ fontSize: 11, color: t.textSec }}>{countries.length} países configurados</div>
       </div>
      </div>
@@ -2809,7 +2788,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>🏷️ Categorías</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>Categorías</div>
        <div style={{ fontSize: 11, color: t.textSec }}>{categories.length} etiquetas</div>
       </div>
      </div>
@@ -2818,15 +2797,9 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
    </Card>
 
    {/* About */}
-   <Card t={t} style={{ marginBottom: 16, textAlign: "center", padding: 24 }}>
-    <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
-    <div style={{ fontSize: 18, fontWeight: 800, color: t.accent }}>Stock de Cuentas</div>
-    <div style={{ fontSize: 10, color: t.textTer, letterSpacing: 2, marginTop: 4 }}>
-     TikTok Inventory Manager
-    </div>
-    <div style={{ marginTop: 8, fontSize: 12, color: t.textSec }}>
-     Gestión profesional de cuentas TikTok
-    </div>
+   <Card t={t} style={{ marginBottom: 16, textAlign: "center", padding: 20 }}>
+    <div style={{ fontSize: 12, fontWeight: 600, color: t.textSec }}>TikTok Inventory</div>
+    <div style={{ fontSize: 10, color: t.textTer, marginTop: 4 }}>v1.0</div>
    </Card>
   </div>
  );
