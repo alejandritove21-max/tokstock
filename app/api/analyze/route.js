@@ -7,7 +7,7 @@ export async function POST(request) {
     }
 
     const prompt = `Analyze this TikTok profile screenshot. Extract and return ONLY a JSON object with these fields (no extra text, no markdown, no code blocks):
-{"username": "the @username without @", "profileName": "display name", "followers": number, "niche": "content category like Fitness/Gaming/Moda/Belleza/Cocina/Viajes/Educacion/Humor/Musica/Deportes/Tecnologia/Finanzas/Arte/Mascotas/Lifestyle/Entretenimiento/Salud/Otro", "categories": ["array of applicable tags from: Creator Rewards, TikTok Shop, Publico Latino, Publico Arabe"]}
+{"username": "the @username without @", "profileName": "display name", "followers": number, "niche": "content category like Fitness/Gaming/Moda/Belleza/Cocina/Viajes/Educacion/Humor/Musica/Deportes/Tecnologia/Finanzas/Arte/Mascotas/Lifestyle/Entretenimiento/Salud/Otro"}
 If you cannot determine a field, use null. Return ONLY valid JSON, nothing else.`;
 
     let result = null;
