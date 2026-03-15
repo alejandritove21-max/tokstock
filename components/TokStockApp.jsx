@@ -141,6 +141,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [whatsappTemplate, setWhatsappTemplate] = useState("");
 
   const t = getTheme(dark);
 
@@ -161,6 +162,8 @@ export default function App() {
           if (savedAi) setAiProviders(savedAi);
           const savedTheme = await db.getSetting("theme");
           if (savedTheme !== null) setDark(savedTheme);
+          const savedTemplate = await db.getSetting("whatsappTemplate");
+          if (savedTemplate) setWhatsappTemplate(savedTemplate);
         }
       } catch (e) {
         console.error("Load error:", e);
@@ -276,6 +279,10 @@ export default function App() {
     setAiProviders(providers);
     try { await db.setSetting("aiProviders", providers); } catch {}
   };
+  const saveWhatsappTemplate = async (tmpl) => {
+    setWhatsappTemplate(tmpl);
+    try { await db.setSetting("whatsappTemplate", tmpl); } catch {}
+  };
 
   // ─── LOADING SCREEN ───
   if (loading) {
@@ -351,7 +358,7 @@ export default function App() {
           onSell={sellAccount} onDisqualify={disqualifyAccount}
           onRestore={restoreAccount} onDelete={deleteAccount}
           onEdit={(acc) => { setEditingAccount(acc); setShowForm(true); setSelectedAccount(null); }}
-          countries={countries}
+          countries={countries} whatsappTemplate={whatsappTemplate}
         />
       ) : showForm ? (
         <AccountForm
@@ -382,6 +389,7 @@ export default function App() {
               categories={categories} saveCategories={saveCategories}
               aiProviders={aiProviders} setAiProviders={setAiProviders}
               saveAiProviders={saveAiProviders}
+              whatsappTemplate={whatsappTemplate} saveWhatsappTemplate={saveWhatsappTemplate}
             />
           )}
 
@@ -941,13 +949,15 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd }) {
 }
 
 // ─── ACCOUNT DETAIL ───
-function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onRestore, onDelete, onEdit, countries }) {
+function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onRestore, onDelete, onEdit, countries, whatsappTemplate }) {
   const [showCreds, setShowCreds] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
   const [sellPrice, setSellPrice] = useState("");
   const [copied, setCopied] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const a = account;
+
+  const profileLink = a.profileLink || (a.username ? `https://www.tiktok.com/@${a.username}` : "");
 
   const copyText = (text, label) => {
     if (navigator.clipboard) navigator.clipboard.writeText(text);
@@ -956,19 +966,18 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
   };
 
   const sendWhatsApp = () => {
-    const msg = `🎵 *CUENTA TIKTOK*\n\n` +
-      `👤 Usuario: @${a.username}\n` +
-      `👥 Seguidores: ${fmtK(a.followers)}\n` +
-      `🌍 País: ${a.country || "—"}\n` +
-      `📂 Nicho: ${a.niche || "—"}\n\n` +
-      `📧 Email: ${a.email || "—"}\n` +
-      `🔑 Contraseña TikTok: ${a.tiktokPassword || "—"}\n` +
-      `🔑 Contraseña Email: ${a.emailPasswordSame ? "(Misma que TikTok)" : (a.emailPassword || "—")}\n\n` +
-      `⚠️ *INSTRUCCIONES:*\n` +
-      `• No cambiar la contraseña\n` +
-      `• No vincular número de teléfono\n` +
-      `• No reclamar la cuenta\n\n` +
-      `— TokStock 🔒`;
+    const template = whatsappTemplate || `🎵 *CUENTA TIKTOK*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n🌍 País: {country}\n📂 Nicho: {niche}\n🔗 Link: {link}\n\n📧 Email: {email}\n🔑 Contraseña TikTok: {tiktokPassword}\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— TokStock 🔒`;
+    const msg = template
+      .replace(/{username}/g, a.username || "—")
+      .replace(/{followers}/g, fmtK(a.followers))
+      .replace(/{country}/g, a.country || "—")
+      .replace(/{niche}/g, a.niche || "—")
+      .replace(/{link}/g, profileLink || "—")
+      .replace(/{email}/g, a.email || "—")
+      .replace(/{tiktokPassword}/g, a.tiktokPassword || "—")
+      .replace(/{emailPassword}/g, a.emailPasswordSame ? "(Misma que TikTok)" : (a.emailPassword || "—"))
+      .replace(/{profileName}/g, a.profileName || "—")
+      .replace(/{price}/g, fmt(a.realSalePrice || a.estimatedSalePrice || 0));
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
   };
@@ -996,6 +1005,24 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
           background: `url(${a.screenshot}) center/cover`,
           border: `1px solid ${t.border}`,
         }} />
+      )}
+
+      {/* Copy Link Button */}
+      {profileLink && (
+        <button
+          onClick={() => copyText(profileLink, "link")}
+          style={{
+            width: "100%", padding: 12, borderRadius: 12, marginBottom: 12,
+            background: copied === "link" ? t.greenSoft : t.bgCardAlt,
+            border: `1px solid ${copied === "link" ? t.green + "40" : t.border}`,
+            cursor: "pointer", display: "flex", alignItems: "center",
+            justifyContent: "center", gap: 8,
+            color: copied === "link" ? t.green : t.text,
+            fontSize: 13, fontWeight: 600, transition: "all .2s",
+          }}
+        >
+          {copied === "link" ? "✅ Link copiado!" : `🔗 Copiar link: tiktok.com/@${a.username}`}
+        </button>
       )}
 
       {/* Public Data */}
@@ -1346,7 +1373,10 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
       
       if (data.error) throw new Error(data.error);
       
-      if (data.username) upd("username", data.username.replace("@", ""));
+      if (data.username) {
+        const cleanUser = data.username.replace("@", "");
+        setForm((f) => ({ ...f, username: cleanUser, profileLink: `https://www.tiktok.com/@${cleanUser}` }));
+      }
       if (data.profileName) setForm((f) => ({ ...f, profileName: data.profileName }));
       if (data.followers) setForm((f) => ({ ...f, followers: data.followers }));
       if (data.niche) setForm((f) => ({ ...f, niche: data.niche }));
@@ -1479,7 +1509,10 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>📝 Datos Generales</div>
 
           <label style={labelStyle}>Nombre de usuario</label>
-          <input placeholder="@usuario" value={form.username} onChange={(e) => upd("username", e.target.value)} style={inputStyle} />
+          <input placeholder="@usuario" value={form.username} onChange={(e) => {
+            const val = e.target.value.replace("@", "");
+            setForm((f) => ({ ...f, username: val, profileLink: val ? `https://www.tiktok.com/@${val}` : "" }));
+          }} style={inputStyle} />
 
           <label style={labelStyle}>Nombre del perfil</label>
           <input placeholder="Nombre visible" value={form.profileName} onChange={(e) => upd("profileName", e.target.value)} style={inputStyle} />
@@ -1960,10 +1993,11 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
 }
 
 // ─── CONFIG SCREEN ───
-function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categories, saveCategories, aiProviders, setAiProviders, saveAiProviders }) {
+function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categories, saveCategories, aiProviders, setAiProviders, saveAiProviders, whatsappTemplate, saveWhatsappTemplate }) {
   const [section, setSection] = useState(null);
   const [newCountry, setNewCountry] = useState({ emoji: "", name: "" });
   const [newCategory, setNewCategory] = useState("");
+  const [templateDraft, setTemplateDraft] = useState(whatsappTemplate || "");
 
   if (section === "countries") {
     return (
@@ -2045,6 +2079,69 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
             </div>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  if (section === "whatsapp") {
+    const defaultTmpl = `🎵 *CUENTA TIKTOK*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n🌍 País: {country}\n📂 Nicho: {niche}\n🔗 Link: {link}\n\n📧 Email: {email}\n🔑 Contraseña TikTok: {tiktokPassword}\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— TokStock 🔒`;
+    return (
+      <div style={{ padding: "16px 16px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button onClick={() => setSection(null)} style={{
+            background: t.bgInput, border: "none", cursor: "pointer",
+            width: 36, height: 36, borderRadius: 10,
+            display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
+          }}>{Icons.back}</button>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>Formato de Entrega</div>
+        </div>
+
+        <div style={{ fontSize: 12, color: t.textSec, marginBottom: 12 }}>
+          Edita el mensaje que se envía por WhatsApp al comprador. Usa estas variables y se reemplazan automáticamente con los datos de la cuenta:
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+          {["{username}", "{followers}", "{country}", "{niche}", "{link}", "{email}", "{tiktokPassword}", "{emailPassword}", "{profileName}", "{price}"].map((v, i) => (
+            <span key={i} style={{
+              fontSize: 10, padding: "3px 8px", borderRadius: 6,
+              background: t.accentSoft, color: t.accent, fontWeight: 600, fontFamily: "monospace",
+            }}>{v}</span>
+          ))}
+        </div>
+
+        <textarea
+          value={templateDraft || defaultTmpl}
+          onChange={(e) => setTemplateDraft(e.target.value)}
+          rows={14}
+          style={{
+            width: "100%", padding: 12, borderRadius: 10,
+            border: `1px solid ${t.border}`, background: t.bgInput,
+            color: t.text, fontSize: 12, fontFamily: "monospace",
+            outline: "none", resize: "vertical", lineHeight: 1.6, marginBottom: 12,
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          <button
+            onClick={() => setTemplateDraft(defaultTmpl)}
+            style={{
+              flex: 1, padding: 12, borderRadius: 10,
+              border: `1px solid ${t.border}`, background: t.bgInput,
+              cursor: "pointer", color: t.textSec, fontWeight: 600, fontSize: 13,
+            }}
+          >
+            Restaurar original
+          </button>
+          <button
+            onClick={() => { saveWhatsappTemplate(templateDraft || defaultTmpl); setSection(null); }}
+            style={{
+              flex: 1, padding: 12, borderRadius: 10, border: "none",
+              background: t.accent, cursor: "pointer", color: "#fff", fontWeight: 700, fontSize: 13,
+            }}
+          >
+            💾 Guardar Formato
+          </button>
+        </div>
       </div>
     );
   }
@@ -2184,6 +2281,20 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
               <div style={{ fontSize: 11, color: t.textSec }}>
                 {aiProviders.filter((p) => p.active).length} proveedor(es) activo(s)
               </div>
+            </div>
+          </div>
+          <span style={{ color: t.textSec }}>›</span>
+        </div>
+      </Card>
+
+      {/* WhatsApp Template */}
+      <Card t={t} onClick={() => setSection("whatsapp")} style={{ marginBottom: 10, cursor: "pointer" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>📲</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>Formato de Entrega</div>
+              <div style={{ fontSize: 11, color: t.textSec }}>Personalizar mensaje de WhatsApp</div>
             </div>
           </div>
           <span style={{ color: t.textSec }}>›</span>
