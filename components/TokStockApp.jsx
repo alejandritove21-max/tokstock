@@ -313,10 +313,13 @@ export default function App() {
  }
 
  const containerStyle = {
-  maxWidth: 430, margin: "0 auto", minHeight: "100vh",
+  maxWidth: 440, margin: "0 auto", minHeight: "100vh",
+  minHeight: "100dvh",
   background: t.bg, color: t.text, position: "relative",
   fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
-  paddingBottom: 80, overflow: "hidden",
+  paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+  paddingTop: "env(safe-area-inset-top, 0px)",
+  overflow: "hidden",
  };
 
  return (
@@ -420,33 +423,34 @@ export default function App() {
      {/* Bottom Tab Bar */}
      <div style={{
       position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-      maxWidth: 430, width: "100%", zIndex: 100,
+      maxWidth: 440, width: "100%", zIndex: 100,
       background: t.bgCard, borderTop: `1px solid ${t.border}`,
-      display: "flex", justifyContent: "space-around", padding: "8px 0 20px",
+      display: "flex", justifyContent: "space-around",
+      padding: "8px 0 calc(12px + env(safe-area-inset-bottom, 8px))",
       backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
      }}>
       {[
-       { id: "home", icon: Icons.home, label: "Inicio" },
-       { id: "stock", icon: Icons.box, label: "Stock" },
-       { id: "reports", icon: Icons.chart, label: "Reportes" },
-       { id: "search", icon: Icons.search, label: "Buscar" },
-       { id: "config", icon: Icons.settings, label: "Config" },
+       { id: "home", label: "🏠 Inicio" },
+       { id: "stock", label: "📦 Stock" },
+       { id: "reports", label: "📊 Reportes" },
+       { id: "search", label: "🔍 Buscar" },
+       { id: "config", label: "⚙️ Config" },
       ].map((t2) => (
        <button
         key={t2.id}
         onClick={() => setTab(t2.id)}
         style={{
          background: "none", border: "none", cursor: "pointer",
-         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+         display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
          color: tab === t2.id ? t.accent : t.textSec,
-         opacity: tab === t2.id ? 1 : 0.6,
+         opacity: tab === t2.id ? 1 : 0.5,
          transition: "all .2s",
+         padding: "4px 0",
         }}
        >
-        <div style={{ transform: tab === t2.id ? "scale(1.15)" : "scale(1)", transition: "transform .2s" }}>
-         {t2.icon}
-        </div>
-        <span style={{ fontSize: 10, fontWeight: 600 }}>{t2.label}</span>
+        <span style={{ fontSize: 10, fontWeight: tab === t2.id ? 700 : 500 }}>{t2.label}</span>
+        {tab === t2.id && <div style={{ width: 16, height: 2, borderRadius: 1, background: t.accent, marginTop: 2 }} />}
        </button>
       ))}
      </div>
@@ -456,21 +460,20 @@ export default function App() {
       <button
        onClick={() => { setEditingAccount(null); setShowForm(true); }}
        style={{
-        position: "fixed", bottom: 90, right: "calc(50% - 195px)",
-        height: 46, borderRadius: 23, paddingLeft: 16, paddingRight: 20,
-        background: `linear-gradient(135deg, ${t.accent}, #6366f1)`,
+        position: "fixed", bottom: 96, right: 20,
+        width: 52, height: 52, borderRadius: 14,
+        background: t.accent,
         border: "none",
         cursor: "pointer", zIndex: 101,
-        display: "flex", alignItems: "center", gap: 6,
-        boxShadow: `0 4px 16px ${t.accent}40`,
-        transition: "transform .2s, box-shadow .2s",
-        color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: `0 4px 20px ${t.accent}50`,
+        transition: "transform .15s",
+        color: "#fff", fontSize: 22, fontWeight: 300,
        }}
-       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
-       {Icons.plus}
-       <span style={{ fontSize: 13, fontWeight: 600 }}>+ Agregar</span>
+       +
       </button>
      )}
     </>
@@ -921,7 +924,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
 // ─── STOCK SCREEN ───
 function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDisqualify, countries }) {
  const [filter, setFilter] = useState("all");
- const [catFilter, setCatFilter] = useState("");
+ const [catFilter, setCatFilter] = useState([]);
  const [query, setQuery] = useState("");
  const [selectMode, setSelectMode] = useState(false);
  const [selected, setSelected] = useState([]);
@@ -934,7 +937,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
  const filtered = useMemo(() => {
   let list = accounts;
   if (filter !== "all") list = list.filter((a) => a.status === filter);
-  if (catFilter) list = list.filter((a) => (a.categories || []).includes(catFilter));
+  if (catFilter.length > 0) list = list.filter((a) => catFilter.every(cf => (a.categories || []).includes(cf)));
   if (query) list = list.filter((a) =>
    (a.username || "").toLowerCase().includes(query.toLowerCase()) ||
    (a.profileName || "").toLowerCase().includes(query.toLowerCase()) ||
@@ -977,7 +980,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
  return (
   <div style={{ padding: "16px 16px 0" }}>
    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-    <div style={{ fontSize: 26, fontWeight: 800 }}>Inventario</div>
+    <div style={{ fontSize: 26, fontWeight: 800 }}>📋 Inventario</div>
     <button
      onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
      style={{
@@ -1032,21 +1035,25 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
    {/* Category Filters */}
    {allCategories.length > 0 && (
     <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto" }}>
-     {catFilter && (
-      <button onClick={() => setCatFilter("")} style={{
+     {catFilter.length > 0 && (
+      <button onClick={() => setCatFilter([])} style={{
        padding: "4px 10px", borderRadius: 14, border: `1px solid ${t.border}`,
        background: "transparent", cursor: "pointer", fontSize: 10, fontWeight: 600, color: t.textSec,
-      }}>✕</button>
+       whiteSpace: "nowrap",
+      }}>✕ Limpiar</button>
      )}
-     {allCategories.map((c) => (
-      <button key={c} onClick={() => setCatFilter(catFilter === c ? "" : c)} style={{
+     {allCategories.map((c) => {
+      const isActive = catFilter.includes(c);
+      return (
+      <button key={c} onClick={() => setCatFilter(isActive ? catFilter.filter(x => x !== c) : [...catFilter, c])} style={{
        padding: "4px 10px", borderRadius: 14, whiteSpace: "nowrap",
-       border: catFilter === c ? "none" : `1px solid ${t.border}`,
-       background: catFilter === c ? t.accentSoft : "transparent",
+       border: isActive ? `1px solid ${t.accent}40` : `1px solid ${t.border}`,
+       background: isActive ? t.accentSoft : "transparent",
        cursor: "pointer", fontSize: 10, fontWeight: 600,
-       color: catFilter === c ? t.accent : t.textTer,
-      }}>{c}</button>
-     ))}
+       color: isActive ? t.accent : t.textTer,
+      }}>{c} {isActive ? "✓" : ""}</button>
+      );
+     })}
     </div>
    )}
 
@@ -1429,7 +1436,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
    {/* Public Data */}
    <Card t={t} style={{ marginBottom: 12 }}>
     <div style={{ fontSize: 12, fontWeight: 700, color: t.accent, marginBottom: 10, letterSpacing: 1 }}>
-     DATOS PÚBLICOS
+     📋 DATOS PÚBLICOS
     </div>
     {[
      ["Perfil", a.profileName],
@@ -1463,7 +1470,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
    {/* Financial Data */}
    <Card t={t} style={{ marginBottom: 12 }}>
     <div style={{ fontSize: 12, fontWeight: 700, color: t.green, marginBottom: 10, letterSpacing: 1 }}>
-     DATOS FINANCIEROS
+     💰 DATOS FINANCIEROS
     </div>
     {[
      ["Precio de Compra", fmt(a.purchasePrice), t.text],
@@ -1627,7 +1634,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       background: t.bgCard, borderRadius: 20, padding: 24,
       maxWidth: 360, width: "100%", border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Registrar Venta</div>
+      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>💰 Registrar Venta</div>
       <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
        Precio de compra: {fmt(a.purchasePrice)}
       </div>
@@ -1886,7 +1893,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    {/* Step 1: Image */}
    {step === 1 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Captura de Pantalla</div>
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📸 Captura de Pantalla</div>
      <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
       Sube un screenshot del perfil TikTok (opcional)
      </div>
@@ -1965,7 +1972,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    {/* Step 2: General Data */}
    {step === 2 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Datos Generales</div>
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>📝 Datos Generales</div>
 
      <label style={labelStyle}>Nombre de usuario</label>
      <input placeholder="@usuario" value={form.username} onChange={(e) => {
@@ -2018,7 +2025,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
       {NICHES.map((n, i) => <option key={i} value={n}>{n}</option>)}
      </select>
 
-     <label style={labelStyle}>Categorías</label>
+     <label style={labelStyle}>🏷️ Categorías</label>
      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
       {categories.map((c, i) => (
        <button
@@ -2057,7 +2064,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    {/* Step 3: Credentials */}
    {step === 3 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Credenciales</div>
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>🔐 Credenciales</div>
 
      <label style={labelStyle}>Email de la cuenta</label>
      <input type="email" placeholder="email@ejemplo.com" value={form.email} onChange={(e) => upd("email", e.target.value)} style={inputStyle} />
@@ -2263,7 +2270,7 @@ function ReportsScreen({ accounts, t, dark }) {
 
  return (
   <div style={{ padding: "16px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Reportes</div>
+   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>📊 Reportes</div>
 
    {/* View Selector */}
    <div style={{ display: "flex", gap: 4, marginBottom: 16, background: t.bgInput, borderRadius: 12, padding: 4 }}>
@@ -2407,7 +2414,7 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
 
  return (
   <div style={{ padding: "16px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Buscar</div>
+   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>🔍 Buscar</div>
 
    <div style={{
     display: "flex", alignItems: "center", gap: 8,
@@ -2452,7 +2459,7 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
 
    {!query && (
     <Card t={t} style={{ textAlign: "center", padding: 32 }}>
-     <div style={{ fontSize: 14, marginBottom: 8, color: t.textSec }}>Buscar</div>
+     <div style={{ fontSize: 14, marginBottom: 8, color: t.textSec }}>🔍 Buscar</div>
      <div style={{ fontSize: 14, fontWeight: 600, color: t.textSec }}>
       Escribe para buscar cuentas
      </div>
@@ -2481,7 +2488,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>Países</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>🌍 Países</div>
     </div>
 
     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -2524,7 +2531,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>Categorías</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>🏷️ Categorías</div>
     </div>
 
     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -2574,7 +2581,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>Formato de Entrega</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>📲 Formato de Entrega</div>
     </div>
 
     <div style={{ fontSize: 12, color: t.textSec, marginBottom: 12 }}>
@@ -2636,7 +2643,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
       width: 36, height: 36, borderRadius: 10,
       display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
      }}>{Icons.back}</button>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>Inteligencia Artificial</div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>🤖 Inteligencia Artificial</div>
     </div>
 
     <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
@@ -2710,7 +2717,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
  return (
   <div style={{ padding: "16px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Configuración</div>
+   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>⚙️ Configuración</div>
 
    {/* Connection Status */}
    <Card t={t} style={{ marginBottom: 10 }}>
@@ -2758,7 +2765,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>Inteligencia Artificial</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>🤖 Inteligencia Artificial</div>
        <div style={{ fontSize: 11, color: t.textSec }}>
         {aiProviders.filter((p) => p.active).length} proveedor(es) activo(s)
        </div>
@@ -2774,7 +2781,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>Formato de Entrega</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>📲 Formato de Entrega</div>
        <div style={{ fontSize: 11, color: t.textSec }}>Personalizar mensaje de WhatsApp</div>
       </div>
      </div>
@@ -2788,7 +2795,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>Países</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>🌍 Países</div>
        <div style={{ fontSize: 11, color: t.textSec }}>{countries.length} países configurados</div>
       </div>
      </div>
@@ -2802,7 +2809,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 12, height: 12, borderRadius: 6, background: t.accent }} />
       <div>
-       <div style={{ fontSize: 13, fontWeight: 700 }}>Categorías</div>
+       <div style={{ fontSize: 13, fontWeight: 700 }}>🏷️ Categorías</div>
        <div style={{ fontSize: 11, color: t.textSec }}>{categories.length} etiquetas</div>
       </div>
      </div>
