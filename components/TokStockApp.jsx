@@ -309,7 +309,7 @@ export default function App() {
   minHeight: "100dvh",
   background: t.bg, color: t.text, position: "relative",
   fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
-  paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+  paddingBottom: "calc(70px + env(safe-area-inset-bottom, 0px))",
   paddingTop: "env(safe-area-inset-top, 0px)",
   overflow: "hidden",
  };
@@ -412,65 +412,65 @@ export default function App() {
       />
      )}
 
-     {/* Menu Toggle Button */}
+     {/* Menu Toggle */}
      <button
       onClick={() => setMenuOpen(!menuOpen)}
       style={{
-       position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-       paddingBottom: "env(safe-area-inset-bottom, 0px)",
-       height: 44, paddingLeft: 20, paddingRight: 20,
-       borderRadius: 22, border: `1px solid ${t.border}`,
+       position: "fixed", bottom: 20, left: 20,
+       marginBottom: "env(safe-area-inset-bottom, 0px)",
+       width: 48, height: 48, borderRadius: 12,
+       border: `1px solid ${t.border}`,
        background: t.bgCard, cursor: "pointer", zIndex: 110,
-       display: "flex", alignItems: "center", gap: 8,
+       display: "flex", alignItems: "center", justifyContent: "center",
        boxShadow: t.shadowLg,
-       color: t.text, fontSize: 13, fontWeight: 600,
       }}
      >
-      <span>{["Inicio", "Stock", "Reportes", "Buscar", "Config"][["home","stock","reports","search","config"].indexOf(tab)]}</span>
-      <span style={{ fontSize: 10, color: t.textSec, transition: "transform .2s", transform: menuOpen ? "rotate(180deg)" : "none" }}>▼</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+       <div style={{ width: 16, height: 1.5, borderRadius: 1, background: t.text, transition: "all .2s", transform: menuOpen ? "rotate(45deg) translate(3px, 3px)" : "none" }} />
+       <div style={{ width: 16, height: 1.5, borderRadius: 1, background: t.text, transition: "all .2s", opacity: menuOpen ? 0 : 1 }} />
+       <div style={{ width: 16, height: 1.5, borderRadius: 1, background: t.text, transition: "all .2s", transform: menuOpen ? "rotate(-45deg) translate(3px, -3px)" : "none" }} />
+      </div>
      </button>
 
-     {/* Slide-up Menu */}
+     {/* Menu Panel */}
      {menuOpen && (
       <>
        <div onClick={() => setMenuOpen(false)} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 108,
+        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 108,
        }} />
        <div style={{
         position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
         maxWidth: 440, width: "100%", zIndex: 109,
-        background: t.bgCard, borderTop: `1px solid ${t.border}`,
-        borderRadius: "20px 20px 0 0",
-        padding: "16px 20px calc(20px + env(safe-area-inset-bottom, 8px))",
+        background: t.bgCard,
+        borderRadius: "16px 16px 0 0",
+        padding: "12px 16px calc(16px + env(safe-area-inset-bottom, 8px))",
         boxShadow: t.shadowLg,
         animation: "slideUp .2s ease",
        }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto 16px" }} />
-        {[
-         { id: "home", label: "Inicio", desc: "Panel general" },
-         { id: "stock", label: "Stock", desc: "Inventario de cuentas" },
-         { id: "reports", label: "Reportes", desc: "Estadísticas y ganancias" },
-         { id: "search", label: "Buscar", desc: "Encontrar cuentas" },
-         { id: "config", label: "Configuración", desc: "Ajustes de la app" },
-        ].map((item) => (
-         <button
-          key={item.id}
-          onClick={() => { setTab(item.id); setMenuOpen(false); }}
-          style={{
-           width: "100%", padding: "12px 14px", borderRadius: 12,
-           border: "none", cursor: "pointer",
-           background: tab === item.id ? t.accentSoft : "transparent",
-           display: "flex", justifyContent: "space-between", alignItems: "center",
-           marginBottom: 4,
-          }}
-         >
-          <div style={{ textAlign: "left" }}>
-           <div style={{ fontSize: 14, fontWeight: 600, color: tab === item.id ? t.accent : t.text }}>{item.label}</div>
-           <div style={{ fontSize: 11, color: t.textSec, marginTop: 1 }}>{item.desc}</div>
-          </div>
-          {tab === item.id && <div style={{ width: 6, height: 6, borderRadius: 3, background: t.accent }} />}
-         </button>
-        ))}
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: t.border, margin: "0 auto 14px" }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+         {[
+          { id: "home", label: "Inicio" },
+          { id: "stock", label: "Stock" },
+          { id: "reports", label: "Reportes" },
+          { id: "search", label: "Buscar" },
+          { id: "config", label: "Config" },
+         ].map((item) => (
+          <button
+           key={item.id}
+           onClick={() => { setTab(item.id); setMenuOpen(false); }}
+           style={{
+            padding: "16px 8px", borderRadius: 12,
+            border: tab === item.id ? `1.5px solid ${t.accent}` : `1px solid ${t.border}`,
+            cursor: "pointer",
+            background: tab === item.id ? t.accentSoft : t.bgCardAlt,
+            display: "flex", alignItems: "center", justifyContent: "center",
+           }}
+          >
+           <span style={{ fontSize: 13, fontWeight: 600, color: tab === item.id ? t.accent : t.text }}>{item.label}</span>
+          </button>
+         ))}
+        </div>
        </div>
       </>
      )}
@@ -480,17 +480,17 @@ export default function App() {
       <button
        onClick={() => { setEditingAccount(null); setShowForm(true); }}
        style={{
-        position: "fixed", bottom: 96, right: 20,
-        width: 52, height: 52, borderRadius: 14,
-        background: t.accent,
-        border: "none",
+        position: "fixed", bottom: 20, right: 20,
+        marginBottom: "env(safe-area-inset-bottom, 0px)",
+        width: 48, height: 48, borderRadius: 12,
+        background: t.accent, border: "none",
         cursor: "pointer", zIndex: 101,
         display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: `0 4px 20px ${t.accent}50`,
+        boxShadow: `0 4px 16px ${t.accent}40`,
         transition: "transform .15s",
         color: "#fff", fontSize: 22, fontWeight: 300,
        }}
-       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
+       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.06)"}
        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
        +
@@ -668,7 +668,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
  const recent = accounts.slice(0, 5);
 
  return (
-  <div style={{ padding: "16px 16px 0" }}>
+  <div style={{ padding: "8px 16px 0" }}>
    {/* Header */}
    <div style={{ marginBottom: 14 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -995,7 +995,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
  };
 
  return (
-  <div style={{ padding: "16px 16px 0" }}>
+  <div style={{ padding: "8px 16px 0" }}>
    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
     <div style={{ fontSize: 26, fontWeight: 800 }}>Inventario</div>
     <button
@@ -1361,7 +1361,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  };
 
  return (
-  <div style={{ padding: "16px 16px 0", animation: "fadeIn .3s ease" }}>
+  <div style={{ padding: "8px 16px 0", animation: "fadeIn .3s ease" }}>
    {/* Header */}
    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
     <button onClick={onBack} style={{
@@ -1901,7 +1901,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
   ? Number(form.estimatedSalePrice) - Number(form.purchasePrice) : null;
 
  return (
-  <div style={{ padding: "16px 16px 0", animation: "fadeIn .3s ease" }}>
+  <div style={{ padding: "8px 16px 0", animation: "fadeIn .3s ease" }}>
    {/* Header */}
    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
     <button onClick={onCancel} style={{
@@ -2316,7 +2316,7 @@ function ReportsScreen({ accounts, t, dark }) {
  );
 
  return (
-  <div style={{ padding: "16px 16px 0" }}>
+  <div style={{ padding: "8px 16px 0" }}>
    <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Reportes</div>
 
    {/* View Selector */}
@@ -2460,7 +2460,7 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
  }, [accounts, query]);
 
  return (
-  <div style={{ padding: "16px 16px 0" }}>
+  <div style={{ padding: "8px 16px 0" }}>
    <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Buscar</div>
 
    <div style={{
@@ -2528,7 +2528,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
  if (section === "countries") {
   return (
-   <div style={{ padding: "16px 16px 0" }}>
+   <div style={{ padding: "8px 16px 0" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
      <button onClick={() => setSection(null)} style={{
       background: t.bgInput, border: "none", cursor: "pointer",
@@ -2571,7 +2571,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
  if (section === "categories") {
   return (
-   <div style={{ padding: "16px 16px 0" }}>
+   <div style={{ padding: "8px 16px 0" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
      <button onClick={() => setSection(null)} style={{
       background: t.bgInput, border: "none", cursor: "pointer",
@@ -2613,7 +2613,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
  if (section === "whatsapp") {
   const defaultTmpl = `*CUENTA TIKTOK*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n País: {country}\n📂 Nicho: {niche}\nLink: {link}\n\n📧 Email: {email}\n🔑 Contraseña TikTok: {tiktokPassword}\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Stock de Cuentas TT`;
   return (
-   <div style={{ padding: "16px 16px 0" }}>
+   <div style={{ padding: "8px 16px 0" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
      <button onClick={() => setSection(null)} style={{
       background: t.bgInput, border: "none", cursor: "pointer",
@@ -2675,7 +2675,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
  if (section === "ai") {
   return (
-   <div style={{ padding: "16px 16px 0" }}>
+   <div style={{ padding: "8px 16px 0" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
      <button onClick={() => setSection(null)} style={{
       background: t.bgInput, border: "none", cursor: "pointer",
@@ -2755,7 +2755,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
  }
 
  return (
-  <div style={{ padding: "16px 16px 0" }}>
+  <div style={{ padding: "8px 16px 0" }}>
    <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Configuración</div>
 
    {/* Connection Status */}
