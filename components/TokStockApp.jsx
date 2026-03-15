@@ -1327,78 +1327,30 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
     setAnalyzing(true);
     setAiError("");
     const base64 = form.screenshot.split(",")[1];
-    const prompt = `Analyze this TikTok profile screenshot. Extract and return ONLY a JSON object with these fields (no extra text, no markdown):
-{"username": "the @username without @", "profileName": "display name", "followers": number, "niche": "content category like Fitness/Gaming/Fashion/etc", "categories": ["array of applicable tags from: Creator Rare, TikTok Shop, Verificada, Monetizable, Alto Engagement, Vintage 3+, Monetizada"]}
-If you can't determine a field, use null. Return ONLY the JSON.`;
+    
+    let provider = "openai";
+    if (activeProvider.name.includes("Gemini")) provider = "gemini";
+    if (activeProvider.name.includes("Claude")) provider = "claude";
 
     try {
-      let result = null;
-
-      if (activeProvider.name.includes("OpenAI")) {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${activeProvider.key}` },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [{ role: "user", content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } }
-            ]}],
-            max_tokens: 500,
-          }),
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
-        result = data.choices?.[0]?.message?.content;
-      }
-      else if (activeProvider.name.includes("Gemini")) {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeProvider.key}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [
-              { text: prompt },
-              { inline_data: { mime_type: "image/jpeg", data: base64 } }
-            ]}],
-          }),
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
-        result = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      }
-      else if (activeProvider.name.includes("Claude")) {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": activeProvider.key,
-            "anthropic-version": "2023-06-01",
-            "anthropic-dangerous-direct-browser-access": "true",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 500,
-            messages: [{ role: "user", content: [
-              { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-              { type: "text", text: prompt }
-            ]}],
-          }),
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error?.message || "Error de Claude");
-        result = data.content?.[0]?.text;
-      }
-
-      if (result) {
-        const clean = result.replace(/```json\n?|```\n?/g, "").trim();
-        const parsed = JSON.parse(clean);
-        if (parsed.username) upd("username", parsed.username.replace("@", ""));
-        if (parsed.profileName) setForm((f) => ({ ...f, profileName: parsed.profileName }));
-        if (parsed.followers) setForm((f) => ({ ...f, followers: parsed.followers }));
-        if (parsed.niche) setForm((f) => ({ ...f, niche: parsed.niche }));
-        if (parsed.categories?.length) setForm((f) => ({ ...f, categories: parsed.categories }));
-        setAiError("");
-      }
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: base64,
+          apiKey: activeProvider.key,
+          provider: provider,
+        }),
+      });
+      const data = await res.json();
+      
+      if (data.error) throw new Error(data.error);
+      
+      if (data.username) upd("username", data.username.replace("@", ""));
+      if (data.profileName) setForm((f) => ({ ...f, profileName: data.profileName }));
+      if (data.followers) setForm((f) => ({ ...f, followers: data.followers }));
+      if (data.niche) setForm((f) => ({ ...f, niche: data.niche }));
+      if (data.categories?.length) setForm((f) => ({ ...f, categories: data.categories }));
     } catch (e) {
       setAiError("Error IA: " + (e.message || "No se pudo analizar"));
     }
