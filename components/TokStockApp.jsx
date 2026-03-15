@@ -350,7 +350,7 @@ export default function App() {
           onBack={() => setSelectedAccount(null)}
           onSell={sellAccount} onDisqualify={disqualifyAccount}
           onRestore={restoreAccount} onDelete={deleteAccount}
-          onEdit={(acc) => { setEditingAccount(acc); setShowForm(true); }}
+          onEdit={(acc) => { setEditingAccount(acc); setShowForm(true); setSelectedAccount(null); }}
           countries={countries}
         />
       ) : showForm ? (
@@ -2123,7 +2123,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
               }} />
             </div>
             <input
-              placeholder="API Key..."
+              placeholder="Pega tu API Key aquí..."
               value={p.key}
               onChange={(e) => {
                 const updated = [...aiProviders];
@@ -2138,11 +2138,13 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
             />
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
               <button
-                onClick={() => {
-                  const updated = [...aiProviders];
-                  updated[i] = { ...p, active: !p.active };
+                onClick={async () => {
+                  const updated = aiProviders.map((prov, j) => ({
+                    ...prov,
+                    active: j === i ? true : false,
+                  }));
                   setAiProviders(updated);
-                  saveAiProviders(updated);
+                  await saveAiProviders(updated);
                 }}
                 style={{
                   flex: 1, padding: 8, borderRadius: 8,
@@ -2151,22 +2153,23 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
                   color: p.active ? t.green : t.textSec,
                 }}
               >
-                {p.active ? "✓ Activo" : "Activar"}
+                {p.active ? "✅ Usando esta IA" : "Usar esta IA"}
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const updated = [...aiProviders];
-                  updated[i] = { ...p, key: updated[i].key };
-                  setAiProviders(updated);
-                  saveAiProviders(updated);
+                  updated[i] = { ...updated[i] };
+                  await saveAiProviders(updated);
+                  alert("Key guardada correctamente");
                 }}
                 style={{
                   flex: 1, padding: 8, borderRadius: 8,
                   border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-                  background: t.accent, color: "#fff",
+                  background: p.key ? t.accent : t.bgInput,
+                  color: p.key ? "#fff" : t.textSec,
                 }}
               >
-                💾 Guardar Key
+                💾 Guardar
               </button>
             </div>
           </Card>
