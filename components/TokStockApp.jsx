@@ -101,29 +101,27 @@ const Icons = {
 
 // ─── STYLES ───
 const getTheme = (dark) => ({
- bg: dark ? "#09090b" : "#fafafa",
- bgCard: dark ? "#131316" : "#ffffff",
- bgCardAlt: dark ? "#19191d" : "#f5f5f7",
- bgInput: dark ? "#19191d" : "#f0f0f2",
- text: dark ? "#e4e4e7" : "#18181b",
- textSec: dark ? "#71717a" : "#71717a",
- textTer: dark ? "#3f3f46" : "#a1a1aa",
- accent: dark ? "#e4e4e7" : "#18181b",
- accentSoft: dark ? "#e4e4e710" : "#18181b08",
- pink: dark ? "#FE2C55" : "#e01240",
- pinkSoft: dark ? "#FE2C5510" : "#e012400a",
- green: dark ? "#4ade80" : "#16a34a",
- greenSoft: dark ? "#4ade8012" : "#16a34a0a",
- red: dark ? "#f87171" : "#dc2626",
- redSoft: dark ? "#f8717112" : "#dc26260a",
- yellow: dark ? "#facc15" : "#ca8a04",
- yellowSoft: dark ? "#facc1512" : "#ca8a040a",
+ bg: dark ? "#0f1117" : "#f8f9fb",
+ bgCard: dark ? "#181a22" : "#ffffff",
+ bgCardAlt: dark ? "#1e2029" : "#f3f4f6",
+ bgInput: dark ? "#1e2029" : "#eef0f4",
+ text: dark ? "#f1f2f4" : "#111827",
+ textSec: dark ? "#8b8fa3" : "#6b7280",
+ textTer: dark ? "#4b4f63" : "#9ca3af",
+ accent: dark ? "#818cf8" : "#6366f1",
+ accentSoft: dark ? "#818cf815" : "#6366f10c",
+ green: dark ? "#34d399" : "#059669",
+ greenSoft: dark ? "#34d39915" : "#0596690c",
+ red: dark ? "#fb7185" : "#e11d48",
+ redSoft: dark ? "#fb718515" : "#e11d480c",
+ yellow: dark ? "#fbbf24" : "#d97706",
+ yellowSoft: dark ? "#fbbf2415" : "#d977060c",
  blue: dark ? "#60a5fa" : "#2563eb",
- blueSoft: dark ? "#60a5fa12" : "#2563eb0a",
- border: dark ? "#1f1f23" : "#e4e4e7",
- borderLight: dark ? "#18181b" : "#f4f4f5",
- shadow: dark ? "none" : "0 1px 3px rgba(0,0,0,.04)",
- shadowLg: dark ? "0 8px 30px rgba(0,0,0,.4)" : "0 4px 20px rgba(0,0,0,.06)",
+ blueSoft: dark ? "#60a5fa15" : "#2563eb0c",
+ border: dark ? "#252836" : "#e5e7eb",
+ borderLight: dark ? "#1c1f2b" : "#f3f4f6",
+ shadow: dark ? "0 2px 8px rgba(0,0,0,.3)" : "0 1px 3px rgba(0,0,0,.06)",
+ shadowLg: dark ? "0 8px 24px rgba(0,0,0,.4)" : "0 4px 16px rgba(0,0,0,.08)",
 });
 
 const BASE_CATEGORIES = ["Creator Rewards", "TikTok Shop", "Publico Latino", "Publico Arabe"];
@@ -291,28 +289,24 @@ export default function App() {
    <div style={{
     height: "100vh", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    background: "#09090b",
+    background: "linear-gradient(180deg, #0f1117 0%, #161a26 100%)",
     fontFamily: "'SF Pro Display', -apple-system, sans-serif",
    }}>
-    <img src="/logo-icon.png" alt="Cimmaron" style={{
-     width: 64, height: 64, marginBottom: 20,
-     animation: "pulse 1.5s ease-in-out infinite",
-    }} />
+    <div style={{ fontSize: 40, marginBottom: 16, animation: "pulse 2s ease-in-out infinite" }}>📦</div>
     <div style={{
-     fontSize: 24, fontWeight: 700, color: "#e4e4e7",
-     letterSpacing: 1,
-    }}>Cimmaron</div>
-    <div style={{ fontSize: 10, color: "#52525b", marginTop: 6, letterSpacing: 3, textTransform: "uppercase" }}>
-     Inventory Manager
+     fontSize: 22, fontWeight: 700, color: "#f1f2f4",
+    }}>Stock de Cuentas</div>
+    <div style={{ fontSize: 10, color: "#6b7280", marginTop: 6, letterSpacing: 2 }}>
+     TikTok Inventory
     </div>
     <div style={{
-     marginTop: 32, width: 40, height: 2,
-     background: "#e4e4e7",
-     borderRadius: 1, animation: "loading 1s ease-in-out infinite",
+     marginTop: 28, width: 36, height: 3,
+     background: "linear-gradient(90deg, #818cf8, #6366f1)",
+     borderRadius: 2, animation: "loading 1.2s ease-in-out infinite",
     }} />
     <style>{`
-     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-     @keyframes loading { 0%,100% { width: 40px; opacity: .3; } 50% { width: 80px; opacity: 1; } }
+     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+     @keyframes loading { 0%,100% { width: 36px; opacity: .3; } 50% { width: 64px; opacity: 1; } }
     `}</style>
    </div>
   );
@@ -463,19 +457,20 @@ export default function App() {
        onClick={() => { setEditingAccount(null); setShowForm(true); }}
        style={{
         position: "fixed", bottom: 90, right: "calc(50% - 195px)",
-        height: 48, borderRadius: 24, paddingLeft: 18, paddingRight: 22,
-        background: t.text, border: "none",
+        height: 46, borderRadius: 23, paddingLeft: 16, paddingRight: 20,
+        background: `linear-gradient(135deg, ${t.accent}, #6366f1)`,
+        border: "none",
         cursor: "pointer", zIndex: 101,
-        display: "flex", alignItems: "center", gap: 8,
-        boxShadow: t.shadowLg,
-        transition: "transform .2s",
-        color: t.bg,
+        display: "flex", alignItems: "center", gap: 6,
+        boxShadow: `0 4px 16px ${t.accent}40`,
+        transition: "transform .2s, box-shadow .2s",
+        color: "#fff",
        }}
        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
        {Icons.plus}
-       <span style={{ fontSize: 13, fontWeight: 600, color: t.bg }}>Agregar</span>
+       <span style={{ fontSize: 13, fontWeight: 600 }}>+ Agregar</span>
       </button>
      )}
     </>
@@ -653,28 +648,30 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
    {/* Header */}
    <div style={{ marginBottom: 16 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <img src="/logo-icon.png" alt="" style={{ width: 32, height: 32, borderRadius: 8 }} />
-      <div>
-       <div style={{ fontSize: 18, fontWeight: 800 }}>Cimmaron</div>
-       <div style={{ fontSize: 10, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
-      </div>
+     <div>
+      <div style={{ fontSize: 20, fontWeight: 800 }}>📦 Stock de Cuentas</div>
+      <div style={{ fontSize: 11, color: t.textSec, marginTop: 2, textTransform: "capitalize" }}>{todayDate}</div>
      </div>
-     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ width: 6, height: 6, borderRadius: 3, background: dbConnected ? t.green : t.red }} />
-      <span style={{ fontSize: 10, color: t.textSec }}>{dbConnected ? "Online" : "Offline"}</span>
+     <div style={{
+      padding: "4px 10px", borderRadius: 20,
+      background: dbConnected ? t.greenSoft : t.redSoft,
+      border: `1px solid ${dbConnected ? t.green : t.red}20`,
+      display: "flex", alignItems: "center", gap: 4,
+     }}>
+      <div style={{ width: 5, height: 5, borderRadius: 3, background: dbConnected ? t.green : t.red }} />
+      <span style={{ fontSize: 9, fontWeight: 600, color: dbConnected ? t.green : t.red }}>{dbConnected ? "Sync" : "Off"}</span>
      </div>
     </div>
     {locationInfo && (
      <div style={{
-      marginTop: 8, padding: "6px 10px", borderRadius: 8,
+      marginTop: 10, padding: "8px 12px", borderRadius: 10,
       background: t.bgCard, border: `1px solid ${t.border}`,
       display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: t.textSec,
      }}>
-      <span>{locationInfo.flag}</span>
-      <span>{locationInfo.country}</span>
-      <span style={{ color: t.borderLight }}>|</span>
-      <span style={{ fontFamily: "monospace", fontSize: 10 }}>{locationInfo.ip}</span>
+      <span style={{ fontSize: 16 }}>{locationInfo.flag}</span>
+      <span style={{ fontWeight: 600, color: t.text }}>{locationInfo.country}</span>
+      <span style={{ flex: 1 }} />
+      <span style={{ fontFamily: "monospace", fontSize: 10, color: t.textTer }}>{locationInfo.ip}</span>
      </div>
     )}
    </div>
@@ -871,34 +868,23 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
     <span></span>
     <span>Resumen General</span>
    </div>
-   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
     {[
-     { label: "Total Cuentas", value: accounts.length, color: t.accent },
-     { label: "Disponibles", value: stats.avail.length, color: t.green },
-     { label: "Vendidas", value: stats.sold.length, color: t.blue, sub: fmt(stats.totalRevenue) },
-     { label: "Invertido Total", value: fmt(stats.totalInvested), color: t.yellow },
+     { label: "Total", value: accounts.length, emoji: "📊" },
+     { label: "Disponibles", value: stats.avail.length, emoji: "🟢" },
+     { label: "Vendidas", value: stats.sold.length, emoji: "💰", sub: fmt(stats.totalRevenue) },
+     { label: "Invertido", value: fmt(stats.totalInvested), emoji: "📈" },
     ].map((s, i) => (
-     <Card t={t} key={i}>
-      <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, marginBottom: 8 }} />
-      <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>{s.label}</div>
-      <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{s.value}</div>
-      {s.sub && <div style={{ fontSize: 11, color: t.green, fontWeight: 600 }}>{s.sub}</div>}
+     <Card t={t} key={i} style={{ padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+       <span style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>{s.label}</span>
+       <span style={{ fontSize: 14 }}>{s.emoji}</span>
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 800 }}>{s.value}</div>
+      {s.sub && <div style={{ fontSize: 11, color: t.green, fontWeight: 600, marginTop: 2 }}>{s.sub}</div>}
      </Card>
     ))}
    </div>
-
-   {/* Connection Status */}
-   <Card t={t} style={{ marginBottom: 16, padding: 12 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-     <div style={{
-      width: 8, height: 8, borderRadius: "50%",
-      background: dbConnected ? t.green : t.red,
-     }} />
-     <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>
-      Base de datos: {dbConnected ? "Conectada" : "Sin conexión"}
-     </span>
-    </div>
-   </Card>
 
    {/* Recent Accounts */}
    {recent.length > 0 && (
@@ -935,21 +921,29 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
 // ─── STOCK SCREEN ───
 function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDisqualify, countries }) {
  const [filter, setFilter] = useState("all");
+ const [catFilter, setCatFilter] = useState("");
  const [query, setQuery] = useState("");
  const [selectMode, setSelectMode] = useState(false);
  const [selected, setSelected] = useState([]);
  const [showBulkSell, setShowBulkSell] = useState(false);
  const [bulkPrice, setBulkPrice] = useState("");
+ const [confirmAction, setConfirmAction] = useState(null);
+
+ const allCategories = [...new Set(accounts.flatMap(a => a.categories || []))];
 
  const filtered = useMemo(() => {
   let list = accounts;
   if (filter !== "all") list = list.filter((a) => a.status === filter);
+  if (catFilter) list = list.filter((a) => (a.categories || []).includes(catFilter));
   if (query) list = list.filter((a) =>
    (a.username || "").toLowerCase().includes(query.toLowerCase()) ||
-   (a.profileName || "").toLowerCase().includes(query.toLowerCase())
+   (a.profileName || "").toLowerCase().includes(query.toLowerCase()) ||
+   (a.country || "").toLowerCase().includes(query.toLowerCase()) ||
+   (a.niche || "").toLowerCase().includes(query.toLowerCase()) ||
+   (a.categories || []).some(c => c.toLowerCase().includes(query.toLowerCase()))
   );
   return list;
- }, [accounts, filter, query]);
+ }, [accounts, filter, catFilter, query]);
 
  const filters = [
   { id: "all", label: "Todas", count: accounts.length },
@@ -1015,17 +1009,18 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
    </div>
 
    {/* Filters */}
-   <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
+   <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto" }}>
     {filters.map((f) => (
      <button
       key={f.id}
       onClick={() => setFilter(f.id)}
       style={{
-       padding: "6px 14px", borderRadius: 20, border: "none",
-       cursor: "pointer", fontSize: 12, fontWeight: 600,
+       padding: "6px 12px", borderRadius: 20,
+       border: filter === f.id ? "none" : `1px solid ${t.border}`,
+       cursor: "pointer", fontSize: 11, fontWeight: 600,
        whiteSpace: "nowrap",
-       background: filter === f.id ? t.text : t.bgInput,
-       color: filter === f.id ? t.bg : t.textSec,
+       background: filter === f.id ? t.accent : "transparent",
+       color: filter === f.id ? "#fff" : t.textSec,
        transition: "all .2s",
       }}
      >
@@ -1033,6 +1028,27 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
      </button>
     ))}
    </div>
+
+   {/* Category Filters */}
+   {allCategories.length > 0 && (
+    <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto" }}>
+     {catFilter && (
+      <button onClick={() => setCatFilter("")} style={{
+       padding: "4px 10px", borderRadius: 14, border: `1px solid ${t.border}`,
+       background: "transparent", cursor: "pointer", fontSize: 10, fontWeight: 600, color: t.textSec,
+      }}>✕</button>
+     )}
+     {allCategories.map((c) => (
+      <button key={c} onClick={() => setCatFilter(catFilter === c ? "" : c)} style={{
+       padding: "4px 10px", borderRadius: 14, whiteSpace: "nowrap",
+       border: catFilter === c ? "none" : `1px solid ${t.border}`,
+       background: catFilter === c ? t.accentSoft : "transparent",
+       cursor: "pointer", fontSize: 10, fontWeight: 600,
+       color: catFilter === c ? t.accent : t.textTer,
+      }}>{c}</button>
+     ))}
+    </div>
+   )}
 
    {/* Select All */}
    {selectMode && (
@@ -1144,7 +1160,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
       }}>
        Vender ({selected.length})
       </button>
-      <button onClick={() => { onBulkDisqualify(selected); exitSelectMode(); }} style={{
+      <button onClick={() => setConfirmAction("disqualify")} style={{
        flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
        background: t.bgCard, cursor: "pointer",
        color: t.red, fontSize: 11, fontWeight: 600,
@@ -1250,6 +1266,35 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
      </div>
     </div>
    )}
+
+   {/* Bulk Confirm Modal */}
+   {confirmAction === "disqualify" && (
+    <div style={{
+     position: "fixed", inset: 0, background: "rgba(0,0,0,.7)",
+     display: "flex", alignItems: "center", justifyContent: "center",
+     zIndex: 200, padding: 20,
+    }}>
+     <div style={{
+      background: t.bgCard, borderRadius: 20, padding: 24,
+      maxWidth: 320, width: "100%", textAlign: "center",
+      border: `1px solid ${t.border}`,
+     }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>🚫</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Descalificar {selected.length} cuentas?</div>
+      <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>Se registrarán como pérdidas. Esta acción no se puede deshacer fácilmente.</div>
+      <div style={{ display: "flex", gap: 8 }}>
+       <button onClick={() => setConfirmAction(null)} style={{
+        flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
+        background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
+       }}>Cancelar</button>
+       <button onClick={() => { onBulkDisqualify(selected); exitSelectMode(); setConfirmAction(null); }} style={{
+        flex: 1, padding: 12, borderRadius: 10, border: "none",
+        background: t.red, cursor: "pointer", color: "#fff", fontWeight: 700,
+       }}>Sí, descalificar</button>
+      </div>
+     </div>
+    </div>
+   )}
   </div>
  );
 }
@@ -1261,6 +1306,8 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  const [sellPrice, setSellPrice] = useState("");
  const [copied, setCopied] = useState(null);
  const [confirmDelete, setConfirmDelete] = useState(false);
+ const [confirmDisqualify, setConfirmDisqualify] = useState(false);
+ const [confirmRestore, setConfirmRestore] = useState(false);
  const [imageRevealed, setImageRevealed] = useState(false);
  const a = account;
 
@@ -1273,7 +1320,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  };
 
  const sendWhatsApp = () => {
-  const template = whatsappTemplate || `*CUENTA TIKTOK*\n\nUsuario: @{username}\nSeguidores: {followers}\nPaís: {country}\nNicho: {niche}\nLink: {link}\n\nEmail: {email}\nContraseña TikTok: {tiktokPassword}\nContraseña Email: {emailPassword}\n\n*INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Cimmaron`;
+  const template = whatsappTemplate || `*CUENTA TIKTOK*\n\nUsuario: @{username}\nSeguidores: {followers}\nPaís: {country}\nNicho: {niche}\nLink: {link}\n\nEmail: {email}\nContraseña TikTok: {tiktokPassword}\nContraseña Email: {emailPassword}\n\n*INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Stock de Cuentas TT`;
   const msg = template
    .replace(/{username}/g, a.username || "—")
    .replace(/{followers}/g, fmtK(a.followers))
@@ -1539,21 +1586,21 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       Editar
      </button>
      {a.status !== "disqualified" && (
-      <button onClick={() => onDisqualify(a.id)} style={{
+      <button onClick={() => setConfirmDisqualify(true)} style={{
        flex: 1, padding: 12, borderRadius: 12,
-       background: t.redSoft, border: `1px solid ${t.red}30`,
+       background: t.redSoft, border: `1px solid ${t.red}20`,
        cursor: "pointer", color: t.red, fontSize: 13, fontWeight: 600,
       }}>
-       Descalificar
+       🚫 Descalificar
       </button>
      )}
      {a.status === "disqualified" && (
-      <button onClick={() => onRestore(a.id)} style={{
+      <button onClick={() => setConfirmRestore(true)} style={{
        flex: 1, padding: 12, borderRadius: 12,
-       background: t.greenSoft, border: `1px solid ${t.green}30`,
+       background: t.greenSoft, border: `1px solid ${t.green}20`,
        cursor: "pointer", color: t.green, fontSize: 13, fontWeight: 600,
       }}>
-       Restaurar
+       ♻️ Restaurar
       </button>
      )}
     </div>
@@ -1634,9 +1681,9 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       maxWidth: 320, width: "100%", textAlign: "center",
       border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 20, marginBottom: 8, color: t.red }}>!</div>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>🗑️</div>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Eliminar cuenta?</div>
-      <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>Esta acción no se puede deshacer</div>
+      <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>@{a.username} — Esta acción no se puede deshacer</div>
       <div style={{ display: "flex", gap: 8 }}>
        <button onClick={() => setConfirmDelete(false)} style={{
         flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
@@ -1645,7 +1692,66 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
        <button onClick={() => { onDelete(a.id); setConfirmDelete(false); }} style={{
         flex: 1, padding: 12, borderRadius: 10, border: "none",
         background: t.red, cursor: "pointer", color: "#fff", fontWeight: 700,
-       }}>Eliminar</button>
+       }}>Sí, eliminar</button>
+      </div>
+     </div>
+    </div>
+   )}
+
+   {/* Disqualify Confirm Modal */}
+   {confirmDisqualify && (
+    <div style={{
+     position: "fixed", inset: 0, background: "rgba(0,0,0,.7)",
+     display: "flex", alignItems: "center", justifyContent: "center",
+     zIndex: 200, padding: 20,
+    }}>
+     <div style={{
+      background: t.bgCard, borderRadius: 20, padding: 24,
+      maxWidth: 320, width: "100%", textAlign: "center",
+      border: `1px solid ${t.border}`,
+     }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>🚫</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Descalificar cuenta?</div>
+      <div style={{ fontSize: 13, color: t.textSec, marginBottom: 4 }}>@{a.username}</div>
+      <div style={{ fontSize: 12, color: t.textTer, marginBottom: 16 }}>Se registrará como pérdida de {fmt(a.purchasePrice)}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+       <button onClick={() => setConfirmDisqualify(false)} style={{
+        flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
+        background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
+       }}>Cancelar</button>
+       <button onClick={() => { onDisqualify(a.id); setConfirmDisqualify(false); }} style={{
+        flex: 1, padding: 12, borderRadius: 10, border: "none",
+        background: t.red, cursor: "pointer", color: "#fff", fontWeight: 700,
+       }}>Sí, descalificar</button>
+      </div>
+     </div>
+    </div>
+   )}
+
+   {/* Restore Confirm Modal */}
+   {confirmRestore && (
+    <div style={{
+     position: "fixed", inset: 0, background: "rgba(0,0,0,.7)",
+     display: "flex", alignItems: "center", justifyContent: "center",
+     zIndex: 200, padding: 20,
+    }}>
+     <div style={{
+      background: t.bgCard, borderRadius: 20, padding: 24,
+      maxWidth: 320, width: "100%", textAlign: "center",
+      border: `1px solid ${t.border}`,
+     }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>♻️</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Restaurar cuenta?</div>
+      <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>@{a.username} volverá al estado "Disponible"</div>
+      <div style={{ display: "flex", gap: 8 }}>
+       <button onClick={() => setConfirmRestore(false)} style={{
+        flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
+        background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
+       }}>Cancelar</button>
+       <button onClick={() => { onRestore(a.id); setConfirmRestore(false); }} style={{
+        flex: 1, padding: 12, borderRadius: 10, border: "none",
+        background: t.green, cursor: "pointer", color: "#fff", fontWeight: 700,
+       }}>Sí, restaurar</button>
       </div>
      </div>
     </div>
@@ -2459,7 +2565,7 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
  }
 
  if (section === "whatsapp") {
-  const defaultTmpl = `*CUENTA TIKTOK*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n País: {country}\n📂 Nicho: {niche}\nLink: {link}\n\n📧 Email: {email}\n🔑 Contraseña TikTok: {tiktokPassword}\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Cimmaron`;
+  const defaultTmpl = `*CUENTA TIKTOK*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n País: {country}\n📂 Nicho: {niche}\nLink: {link}\n\n📧 Email: {email}\n🔑 Contraseña TikTok: {tiktokPassword}\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Stock de Cuentas TT`;
   return (
    <div style={{ padding: "16px 16px 0" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -2706,12 +2812,13 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
 
    {/* About */}
    <Card t={t} style={{ marginBottom: 16, textAlign: "center", padding: 24 }}>
-    <img src="/logo-full.png" alt="Cimmaron" style={{ width: 160, marginBottom: 12 }} />
-    <div style={{ fontSize: 11, color: t.textSec, letterSpacing: 2, marginTop: 4 }}>
-     INVENTORY MANAGER
+    <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
+    <div style={{ fontSize: 18, fontWeight: 800, color: t.accent }}>Stock de Cuentas</div>
+    <div style={{ fontSize: 10, color: t.textTer, letterSpacing: 2, marginTop: 4 }}>
+     TikTok Inventory Manager
     </div>
     <div style={{ marginTop: 8, fontSize: 12, color: t.textSec }}>
-     Cuentas TikTok monetizadas
+     Gestión profesional de cuentas TikTok
     </div>
    </Card>
   </div>
