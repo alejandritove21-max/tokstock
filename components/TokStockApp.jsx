@@ -378,6 +378,33 @@ export default function App() {
             <StockScreen accounts={accounts} t={t} dark={dark}
               onSelect={setSelectedAccount}
               onAdd={() => { setEditingAccount(null); setShowForm(true); }}
+              onBulkSell={async (ids, totalPrice) => {
+                setSyncing(true);
+                try {
+                  const priceEach = totalPrice / ids.length;
+                  for (const id of ids) {
+                    const acc = accounts.find((a) => a.id === id);
+                    const profit = priceEach - (acc.purchasePrice || 0);
+                    await db.updateAccount(id, { status: "sold", realSalePrice: priceEach, profit, soldDate: today() });
+                  }
+                  const accs = await db.getAccounts();
+                  setAccounts(accs);
+                  notify(`${ids.length} cuentas vendidas — ${fmt(totalPrice)} total`);
+                } catch (e) { notify("Error: " + e.message, "error"); }
+                setSyncing(false);
+              }}
+              onBulkDisqualify={async (ids) => {
+                setSyncing(true);
+                try {
+                  for (const id of ids) {
+                    await db.updateAccount(id, { status: "disqualified", disqualifiedDate: today() });
+                  }
+                  const accs = await db.getAccounts();
+                  setAccounts(accs);
+                  notify(`${ids.length} cuentas descalificadas`, "error");
+                } catch (e) { notify("Error: " + e.message, "error"); }
+                setSyncing(false);
+              }}
             />
           )}
           {tab === "reports" && <ReportsScreen accounts={accounts} t={t} dark={dark} />}
@@ -869,9 +896,13 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
 }
 
 // ─── STOCK SCREEN ───
-function StockScreen({ accounts, t, dark, onSelect, onAdd }) {
+function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDisqualify }) {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [showBulkSell, setShowBulkSell] = useState(false);
+  const [bulkPrice, setBulkPrice] = useState("");
 
   const filtered = useMemo(() => {
     let list = accounts;
@@ -890,9 +921,44 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd }) {
     { id: "disqualified", label: "Desc.", count: accounts.filter((a) => a.status === "disqualified").length },
   ];
 
+  const toggleSelect = (id) => {
+    setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
+  };
+
+  const selectAll = () => {
+    if (selected.length === filtered.length) setSelected([]);
+    else setSelected(filtered.map((a) => a.id));
+  };
+
+  const selectedAccounts = accounts.filter((a) => selected.includes(a.id));
+
+  const shareLinks = () => {
+    const links = selectedAccounts.map((a) => a.profileLink || `https://www.tiktok.com/@${a.username}`).join("\n");
+    if (navigator.clipboard) navigator.clipboard.writeText(links);
+    alert(`${selected.length} links copiados al portapapeles`);
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelected([]);
+  };
+
   return (
     <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Inventario</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 26, fontWeight: 800 }}>Inventario</div>
+        <button
+          onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+          style={{
+            padding: "6px 14px", borderRadius: 10, border: "none",
+            cursor: "pointer", fontSize: 12, fontWeight: 700,
+            background: selectMode ? t.accent : t.bgInput,
+            color: selectMode ? "#fff" : t.textSec,
+          }}
+        >
+          {selectMode ? "✕ Cancelar" : "☑ Seleccionar"}
+        </button>
+      </div>
 
       {/* Search */}
       <div style={{
@@ -912,7 +978,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd }) {
       </div>
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {filters.map((f) => (
           <button
             key={f.id}
@@ -931,9 +997,41 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd }) {
         ))}
       </div>
 
+      {/* Select All */}
+      {selectMode && (
+        <button
+          onClick={selectAll}
+          style={{
+            width: "100%", padding: 8, borderRadius: 10, marginBottom: 10,
+            border: `1px solid ${t.border}`, background: t.bgInput,
+            cursor: "pointer", fontSize: 12, fontWeight: 600, color: t.textSec,
+          }}
+        >
+          {selected.length === filtered.length ? "Deseleccionar todas" : `Seleccionar todas (${filtered.length})`}
+        </button>
+      )}
+
       {/* List */}
       {filtered.map((a) => (
-        <AccountListItem key={a.id} account={a} t={t} onSelect={onSelect} />
+        <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {selectMode && (
+            <button
+              onClick={() => toggleSelect(a.id)}
+              style={{
+                width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                border: `2px solid ${selected.includes(a.id) ? t.accent : t.border}`,
+                background: selected.includes(a.id) ? t.accent : "transparent",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#fff", fontSize: 14,
+              }}
+            >
+              {selected.includes(a.id) ? "✓" : ""}
+            </button>
+          )}
+          <div style={{ flex: 1 }}>
+            <AccountListItem account={a} t={t} onSelect={selectMode ? () => toggleSelect(a.id) : onSelect} />
+          </div>
+        </div>
       ))}
 
       {filtered.length === 0 && (
@@ -943,6 +1041,124 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd }) {
             No se encontraron cuentas
           </div>
         </Card>
+      )}
+
+      {/* Bulk Actions Bar */}
+      {selectMode && selected.length > 0 && (
+        <div style={{
+          position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
+          maxWidth: 410, width: "calc(100% - 32px)", zIndex: 150,
+          background: t.bgCard, borderRadius: 16, padding: 12,
+          border: `1px solid ${t.border}`, boxShadow: t.shadowLg,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: t.accent, marginBottom: 8, textAlign: "center" }}>
+            {selected.length} cuenta{selected.length !== 1 ? "s" : ""} seleccionada{selected.length !== 1 ? "s" : ""}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={shareLinks} style={{
+              flex: 1, padding: 10, borderRadius: 10, border: "none",
+              background: t.blueSoft, cursor: "pointer",
+              color: t.blue, fontSize: 11, fontWeight: 700,
+            }}>
+              🔗 Copiar Links
+            </button>
+            <button onClick={() => setShowBulkSell(true)} style={{
+              flex: 1, padding: 10, borderRadius: 10, border: "none",
+              background: t.greenSoft, cursor: "pointer",
+              color: t.green, fontSize: 11, fontWeight: 700,
+            }}>
+              💰 Vender ({selected.length})
+            </button>
+            <button onClick={() => { onBulkDisqualify(selected); exitSelectMode(); }} style={{
+              flex: 1, padding: 10, borderRadius: 10, border: "none",
+              background: t.redSoft, cursor: "pointer",
+              color: t.red, fontSize: 11, fontWeight: 700,
+            }}>
+              🚫 Descalificar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Sell Modal */}
+      {showBulkSell && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 200, padding: 20,
+        }}>
+          <div style={{
+            background: t.bgCard, borderRadius: 20, padding: 24,
+            maxWidth: 360, width: "100%", border: `1px solid ${t.border}`,
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Venta en Lote</div>
+            <div style={{ fontSize: 12, color: t.textSec, marginBottom: 4 }}>
+              {selected.length} cuenta{selected.length !== 1 ? "s" : ""} seleccionada{selected.length !== 1 ? "s" : ""}
+            </div>
+            <div style={{ fontSize: 11, color: t.textSec, marginBottom: 16 }}>
+              Costo total de compra: {fmt(selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0))}
+            </div>
+            <input
+              type="number" placeholder="Precio TOTAL de venta ($)"
+              value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)}
+              style={{
+                width: "100%", padding: 12, borderRadius: 10,
+                border: `1px solid ${t.border}`, background: t.bgInput,
+                color: t.text, fontSize: 16, fontWeight: 700,
+                marginBottom: 8, outline: "none",
+              }}
+            />
+            {bulkPrice && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
+                  <span style={{ color: t.textSec }}>Precio por cuenta:</span>
+                  <span style={{ fontWeight: 700 }}>{fmt(Number(bulkPrice) / selected.length)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
+                  <span style={{ color: t.textSec }}>Ganancia total:</span>
+                  <span style={{
+                    fontWeight: 700,
+                    color: (Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)) >= 0 ? t.green : t.red,
+                  }}>
+                    {fmt(Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0))}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
+                  <span style={{ color: t.textSec }}>Ganancia por cuenta:</span>
+                  <span style={{
+                    fontWeight: 700,
+                    color: ((Number(bulkPrice) / selected.length) - (selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0) / selected.length)) >= 0 ? t.green : t.red,
+                  }}>
+                    {fmt((Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)) / selected.length)}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => { setShowBulkSell(false); setBulkPrice(""); }}
+                style={{
+                  flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
+                  background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
+                }}
+              >Cancelar</button>
+              <button
+                onClick={() => {
+                  if (bulkPrice && Number(bulkPrice) > 0) {
+                    onBulkSell(selected, Number(bulkPrice));
+                    setShowBulkSell(false);
+                    setBulkPrice("");
+                    exitSelectMode();
+                  }
+                }}
+                style={{
+                  flex: 1, padding: 12, borderRadius: 10, border: "none",
+                  background: t.green, cursor: "pointer", color: "#fff", fontWeight: 700,
+                }}
+              >Confirmar Venta</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1012,7 +1228,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
         <button
           onClick={() => copyText(profileLink, "link")}
           style={{
-            width: "100%", padding: 12, borderRadius: 12, marginBottom: 12,
+            width: "100%", padding: 12, borderRadius: 12, marginBottom: 8,
             background: copied === "link" ? t.greenSoft : t.bgCardAlt,
             border: `1px solid ${copied === "link" ? t.green + "40" : t.border}`,
             cursor: "pointer", display: "flex", alignItems: "center",
@@ -1022,6 +1238,43 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
           }}
         >
           {copied === "link" ? "✅ Link copiado!" : `🔗 Copiar link: tiktok.com/@${a.username}`}
+        </button>
+      )}
+
+      {/* Copy Image Button */}
+      {a.screenshot && (
+        <button
+          onClick={async () => {
+            try {
+              const res = await fetch(a.screenshot);
+              const blob = await res.blob();
+              await navigator.clipboard.write([
+                new ClipboardItem({ [blob.type]: blob })
+              ]);
+              setCopied("image");
+              setTimeout(() => setCopied(null), 1500);
+            } catch (e) {
+              const link = document.createElement("a");
+              link.href = a.screenshot;
+              link.download = `${a.username || "cuenta"}_${(a.categories || [])[0] || "tiktok"}.png`;
+              link.click();
+              setCopied("image");
+              setTimeout(() => setCopied(null), 1500);
+            }
+          }}
+          style={{
+            width: "100%", padding: 12, borderRadius: 12, marginBottom: 12,
+            background: copied === "image" ? t.greenSoft : t.bgCardAlt,
+            border: `1px solid ${copied === "image" ? t.green + "40" : t.border}`,
+            cursor: "pointer", display: "flex", alignItems: "center",
+            justifyContent: "center", gap: 8,
+            color: copied === "image" ? t.green : t.text,
+            fontSize: 13, fontWeight: 600, transition: "all .2s",
+          }}
+        >
+          {copied === "image"
+            ? "✅ Imagen copiada!"
+            : `📷 Copiar imagen${(a.categories || [])[0] ? ` — ${a.categories[0]}` : ""}`}
         </button>
       )}
 
