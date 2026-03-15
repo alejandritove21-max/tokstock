@@ -1,0 +1,17 @@
+{
+  "name": "Cimmaron",
+  "short_name": "Cimmaron",
+  "description": "Cuentas TikTok monetizadas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#25F4EE",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
