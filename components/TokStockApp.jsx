@@ -26,13 +26,10 @@ const DEFAULT_COUNTRIES = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  "Creator Rare",
+  "Creator Rewards",
   "TikTok Shop",
-  "Verificada",
-  "Monetizable",
-  "Alto Engagement",
-  "Vintage 3+",
-  "Monetizada",
+  "Publico Latino",
+  "Publico Arabe",
 ];
 
 const DEFAULT_AI_PROVIDERS = [
@@ -104,27 +101,27 @@ const Icons = {
 
 // ─── STYLES ───
 const getTheme = (dark) => ({
-  bg: dark ? "#0a0a0f" : "#f5f3f0",
-  bgCard: dark ? "#16161f" : "#ffffff",
-  bgCardAlt: dark ? "#1e1e2a" : "#faf8f5",
-  bgInput: dark ? "#1e1e2a" : "#f0ede8",
-  text: dark ? "#e8e6e3" : "#1a1a1a",
-  textSec: dark ? "#8b8a94" : "#6b6966",
-  textTer: dark ? "#55545e" : "#a09d98",
-  accent: "#e84545",
-  accentSoft: dark ? "#e8454520" : "#e8454515",
-  green: "#22c55e",
-  greenSoft: dark ? "#22c55e20" : "#22c55e15",
-  red: "#ef4444",
-  redSoft: dark ? "#ef444420" : "#ef444415",
-  yellow: "#f59e0b",
-  yellowSoft: dark ? "#f59e0b20" : "#f59e0b15",
-  blue: "#3b82f6",
-  blueSoft: dark ? "#3b82f620" : "#3b82f615",
-  border: dark ? "#2a2a38" : "#e5e2dc",
-  borderLight: dark ? "#22222f" : "#f0ede8",
-  shadow: dark ? "0 2px 12px rgba(0,0,0,.4)" : "0 2px 12px rgba(0,0,0,.06)",
-  shadowLg: dark ? "0 8px 32px rgba(0,0,0,.5)" : "0 8px 32px rgba(0,0,0,.1)",
+  bg: dark ? "#0c0c14" : "#f0f2f5",
+  bgCard: dark ? "#161622" : "#ffffff",
+  bgCardAlt: dark ? "#1c1c2e" : "#f7f8fa",
+  bgInput: dark ? "#1c1c2e" : "#e8ecf0",
+  text: dark ? "#eaeaf0" : "#111318",
+  textSec: dark ? "#7d7d92" : "#5c6370",
+  textTer: dark ? "#4a4a5e" : "#9ca3ad",
+  accent: dark ? "#7c5cfc" : "#6241ea",
+  accentSoft: dark ? "#7c5cfc20" : "#6241ea12",
+  green: dark ? "#34d399" : "#059669",
+  greenSoft: dark ? "#34d39918" : "#05966910",
+  red: dark ? "#f87171" : "#dc2626",
+  redSoft: dark ? "#f8717118" : "#dc262610",
+  yellow: dark ? "#fbbf24" : "#d97706",
+  yellowSoft: dark ? "#fbbf2418" : "#d9770610",
+  blue: dark ? "#60a5fa" : "#2563eb",
+  blueSoft: dark ? "#60a5fa18" : "#2563eb10",
+  border: dark ? "#252538" : "#d8dce2",
+  borderLight: dark ? "#1e1e30" : "#edf0f3",
+  shadow: dark ? "0 2px 12px rgba(0,0,0,.5)" : "0 2px 12px rgba(0,0,0,.05)",
+  shadowLg: dark ? "0 8px 32px rgba(0,0,0,.6)" : "0 8px 32px rgba(0,0,0,.08)",
 });
 
 // ─── MAIN APP ───
@@ -290,7 +287,7 @@ export default function App() {
       <div style={{
         height: "100vh", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        background: "linear-gradient(145deg, #0a0a0f 0%, #16161f 50%, #1e1024 100%)",
+        background: "linear-gradient(145deg, #0c0c14 0%, #161622 50%, #1a1430 100%)",
         fontFamily: "'SF Pro Display', -apple-system, sans-serif",
       }}>
         <div style={{
@@ -298,14 +295,14 @@ export default function App() {
           animation: "pulse 1.5s ease-in-out infinite",
         }}>🎵</div>
         <div style={{
-          fontSize: 24, fontWeight: 700, color: "#e84545",
+          fontSize: 24, fontWeight: 700, color: "#7c5cfc",
           letterSpacing: 2, textTransform: "uppercase",
         }}>TokStock</div>
         <div style={{ fontSize: 12, color: "#8b8a94", marginTop: 8, letterSpacing: 4 }}>
           INVENTORY MANAGER
         </div>
         <div style={{
-          marginTop: 32, width: 40, height: 3, background: "#e84545",
+          marginTop: 32, width: 40, height: 3, background: "#7c5cfc",
           borderRadius: 2, animation: "loading 1s ease-in-out infinite",
         }} />
         <style>{`
@@ -461,7 +458,7 @@ export default function App() {
               style={{
                 position: "fixed", bottom: 90, right: "calc(50% - 195px)",
                 width: 56, height: 56, borderRadius: "50%",
-                background: `linear-gradient(135deg, ${t.accent}, #ff6b6b)`,
+                background: `linear-gradient(135deg, ${t.accent}, #a78bfa)`,
                 border: "none", cursor: "pointer", zIndex: 101,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 boxShadow: `0 4px 20px ${t.accent}60`,
@@ -645,7 +642,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
       {/* Net Cash Flow (all time) */}
       <Card t={t} style={{
         marginBottom: 12,
-        background: `linear-gradient(135deg, ${dark ? "#16161f" : "#fff"}, ${stats.netCashFlow >= 0 ? t.greenSoft : t.redSoft})`,
+        background: `linear-gradient(135deg, ${dark ? "#161622" : "#fff"}, ${stats.netCashFlow >= 0 ? t.greenSoft : t.redSoft})`,
       }}>
         <div style={{ fontSize: 11, color: t.textSec, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>
           Flujo Neto de Caja — Total
@@ -691,7 +688,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
         {/* Period Net Cash Flow */}
         <Card t={t} style={{
           marginBottom: 8,
-          background: `linear-gradient(135deg, ${dark ? "#16161f" : "#fff"}, ${currentPeriod.netCash >= 0 ? (dark ? "#0a2a15" : "#e8fce8") : (dark ? "#2a0a0a" : "#fce8e8")})`,
+          background: `linear-gradient(135deg, ${dark ? "#161622" : "#fff"}, ${currentPeriod.netCash >= 0 ? (dark ? "#0c1f18" : "#e8fce8") : (dark ? "#1f0c0c" : "#fce8e8")})`,
           border: `1px solid ${currentPeriod.netCash >= 0 ? t.green + "30" : t.red + "30"}`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1054,14 +1051,54 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
           <div style={{ fontSize: 12, fontWeight: 700, color: t.accent, marginBottom: 8, textAlign: "center" }}>
             {selected.length} cuenta{selected.length !== 1 ? "s" : ""} seleccionada{selected.length !== 1 ? "s" : ""}
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
             <button onClick={shareLinks} style={{
               flex: 1, padding: 10, borderRadius: 10, border: "none",
               background: t.blueSoft, cursor: "pointer",
               color: t.blue, fontSize: 11, fontWeight: 700,
             }}>
-              🔗 Copiar Links
+              🔗 Links
             </button>
+            <button onClick={async () => {
+              const accsWithImg = selectedAccounts.filter((a) => a.screenshot);
+              if (accsWithImg.length === 0) { alert("Ninguna cuenta seleccionada tiene imagen"); return; }
+              try {
+                const blobs = await Promise.all(accsWithImg.map(async (a) => {
+                  const res = await fetch(a.screenshot);
+                  return await res.blob();
+                }));
+                if (blobs.length === 1) {
+                  await navigator.clipboard.write([new ClipboardItem({ [blobs[0].type]: blobs[0] })]);
+                } else {
+                  await navigator.clipboard.write([new ClipboardItem({ [blobs[0].type]: blobs[0] })]);
+                }
+                alert(`${accsWithImg.length === 1 ? "Imagen copiada" : `${accsWithImg.length} imágenes — primera copiada, descargando el resto...`}`);
+                if (blobs.length > 1) {
+                  accsWithImg.slice(1).forEach((a, i) => {
+                    const link = document.createElement("a");
+                    link.href = a.screenshot;
+                    link.download = `${a.username || "cuenta"}_${(a.categories || [])[0] || "tiktok"}.png`;
+                    setTimeout(() => link.click(), i * 300);
+                  });
+                }
+              } catch (e) {
+                accsWithImg.forEach((a, i) => {
+                  const link = document.createElement("a");
+                  link.href = a.screenshot;
+                  link.download = `${a.username || "cuenta"}_${(a.categories || [])[0] || "tiktok"}.png`;
+                  setTimeout(() => link.click(), i * 300);
+                });
+                alert(`Descargando ${accsWithImg.length} imagen(es)`);
+              }
+            }} style={{
+              flex: 1, padding: 10, borderRadius: 10, border: "none",
+              background: t.yellowSoft, cursor: "pointer",
+              color: t.yellow, fontSize: 11, fontWeight: 700,
+            }}>
+              📷 Imágenes
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => setShowBulkSell(true)} style={{
               flex: 1, padding: 10, borderRadius: 10, border: "none",
               background: t.greenSoft, cursor: "pointer",
@@ -1907,7 +1944,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
               }}
               style={{
                 flex: 1, padding: 12, borderRadius: 10, border: "none",
-                background: `linear-gradient(135deg, ${t.accent}, #ff6b6b)`,
+                background: `linear-gradient(135deg, ${t.accent}, #a78bfa)`,
                 cursor: "pointer", color: "#fff", fontWeight: 700,
               }}
             >
