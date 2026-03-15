@@ -444,18 +444,18 @@ export default function App() {
         maxWidth: 440, width: "100%", zIndex: 109,
         background: t.bgCard,
         borderRadius: "20px 20px 0 0",
-        padding: "0 16px calc(20px + env(safe-area-inset-bottom, 8px))",
+        padding: "0 16px calc(80px + env(safe-area-inset-bottom, 8px))",
         boxShadow: t.shadowLg,
         animation: "slideUp .25s ease",
        }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "10px auto 20px" }} />
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "10px auto 16px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
          {[
-          { id: "home", label: "Inicio", icon: "⌂" },
-          { id: "stock", label: "Stock", icon: "▤" },
-          { id: "reports", label: "Reportes", icon: "◩" },
-          { id: "search", label: "Buscar", icon: "○" },
-          { id: "config", label: "Config", icon: "⚙" },
+          { id: "home", label: "Inicio", icon: "🏠" },
+          { id: "stock", label: "Stock", icon: "📦" },
+          { id: "reports", label: "Reportes", icon: "📊" },
+          { id: "search", label: "Buscar", icon: "🔍" },
+          { id: "config", label: "Config", icon: "⚙️" },
          ].map((item) => {
           const active = tab === item.id;
           return (
@@ -463,14 +463,14 @@ export default function App() {
            key={item.id}
            onClick={() => { setTab(item.id); setMenuOpen(false); }}
            style={{
-            flex: 1, padding: "12px 4px", borderRadius: 14,
+            flex: 1, padding: "14px 4px", borderRadius: 14,
             border: "none", cursor: "pointer",
             background: active ? t.accent : "transparent",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
             transition: "all .15s",
            }}
           >
-           <span style={{ fontSize: 16, color: active ? "#fff" : t.textTer, lineHeight: 1 }}>{item.icon}</span>
+           <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
            <span style={{ fontSize: 10, fontWeight: 600, color: active ? "#fff" : t.textSec }}>{item.label}</span>
           </button>
           );
