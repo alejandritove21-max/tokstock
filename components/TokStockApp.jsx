@@ -462,17 +462,19 @@ export default function App() {
        onClick={() => { setEditingAccount(null); setShowForm(true); }}
        style={{
         position: "fixed", bottom: 90, right: "calc(50% - 195px)",
-        width: 56, height: 56, borderRadius: "50%",
-        background: `linear-gradient(135deg, #25F4EE, #FE2C55)`,
-        border: "none", cursor: "pointer", zIndex: 101,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 4px 20px rgba(37,244,238,.4)",
+        height: 48, borderRadius: 24, paddingLeft: 18, paddingRight: 22,
+        background: "#000", border: "1px solid #25F4EE40",
+        cursor: "pointer", zIndex: 101,
+        display: "flex", alignItems: "center", gap: 8,
+        boxShadow: "0 4px 24px rgba(0,0,0,.5), 0 0 0 1px rgba(37,244,238,.15)",
         transition: "transform .2s",
+        color: "#25F4EE",
        }}
-       onMouseEnter={(e) => e.target.style.transform = "scale(1.1)"}
-       onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
+       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+       onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
        {Icons.plus}
+       <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Agregar</span>
       </button>
      )}
     </>
@@ -569,6 +571,19 @@ function AccountListItem({ account, t, onSelect }) {
 // ─── HOME SCREEN ───
 function HomeScreen({ accounts, t, dark, onSelect }) {
  const [period, setPeriod] = useState("today");
+ const [locationInfo, setLocationInfo] = useState(null);
+
+ useEffect(() => {
+  (async () => {
+   try {
+    const res = await fetch("https://ipapi.co/json/");
+    const data = await res.json();
+    setLocationInfo({ ip: data.ip, country: data.country_name, flag: data.country_code ? String.fromCodePoint(...[...data.country_code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0))) : "" });
+   } catch {}
+  })();
+ }, []);
+
+ const todayDate = new Date().toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
  const stats = useMemo(() => {
   const sold = accounts.filter((a) => a.status === "sold");
@@ -635,18 +650,32 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
  return (
   <div style={{ padding: "16px 16px 0" }}>
    {/* Header */}
-   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-    <div>
+   <div style={{ marginBottom: 16 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <img src="/logo-icon.png" alt="" style={{ width: 28, height: 28, borderRadius: 7 }} />
-      <span style={{ fontSize: 18, fontWeight: 800 }}>Cimmaron</span>
+      <img src="/logo-icon.png" alt="" style={{ width: 32, height: 32, borderRadius: 8 }} />
+      <div>
+       <div style={{ fontSize: 18, fontWeight: 800 }}>Cimmaron</div>
+       <div style={{ fontSize: 10, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
+      </div>
      </div>
-     <div style={{ fontSize: 11, color: t.textSec, marginTop: 2, letterSpacing: 1 }}>Panel General</div>
+     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ width: 6, height: 6, borderRadius: 3, background: dbConnected ? t.green : t.red }} />
+      <span style={{ fontSize: 10, color: t.textSec }}>{dbConnected ? "Online" : "Offline"}</span>
+     </div>
     </div>
-    <div style={{
-     width: 8, height: 8, borderRadius: "50%",
-     background: dbConnected ? t.green : t.red,
-    }} />
+    {locationInfo && (
+     <div style={{
+      marginTop: 8, padding: "6px 10px", borderRadius: 8,
+      background: t.bgCard, border: `1px solid ${t.border}`,
+      display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: t.textSec,
+     }}>
+      <span>{locationInfo.flag}</span>
+      <span>{locationInfo.country}</span>
+      <span style={{ color: t.borderLight }}>|</span>
+      <span style={{ fontFamily: "monospace", fontSize: 10 }}>{locationInfo.ip}</span>
+     </div>
+    )}
    </div>
 
    {/* Net Cash Flow (all time) */}
@@ -1216,6 +1245,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  const [sellPrice, setSellPrice] = useState("");
  const [copied, setCopied] = useState(null);
  const [confirmDelete, setConfirmDelete] = useState(false);
+ const [imageRevealed, setImageRevealed] = useState(false);
  const a = account;
 
  const profileLink = a.profileLink || (a.username ? `https://www.tiktok.com/@${a.username}` : "");
@@ -1227,7 +1257,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  };
 
  const sendWhatsApp = () => {
-  const template = whatsappTemplate || `*CUENTA TIKTOK*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n País: {country}\n📂 Nicho: {niche}\nLink: {link}\n\n📧 Email: {email}\n🔑 Contraseña TikTok: {tiktokPassword}\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Cimmaron`;
+  const template = whatsappTemplate || `*CUENTA TIKTOK*\n\nUsuario: @{username}\nSeguidores: {followers}\nPaís: {country}\nNicho: {niche}\nLink: {link}\n\nEmail: {email}\nContraseña TikTok: {tiktokPassword}\nContraseña Email: {emailPassword}\n\n*INSTRUCCIONES:*\n• No cambiar la contraseña\n• No vincular número de teléfono\n• No reclamar la cuenta\n\n— Cimmaron`;
   const msg = template
    .replace(/{username}/g, a.username || "—")
    .replace(/{followers}/g, fmtK(a.followers))
@@ -1246,7 +1276,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  return (
   <div style={{ padding: "16px 16px 0", animation: "fadeIn .3s ease" }}>
    {/* Header */}
-   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
     <button onClick={onBack} style={{
      background: t.bgInput, border: "none", cursor: "pointer",
      width: 36, height: 36, borderRadius: 10,
@@ -1259,51 +1289,60 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
     </div>
    </div>
 
-   {/* Profile Image */}
+   {/* Profile Image with blur */}
    {a.screenshot && (
-    <div style={{
-     width: "100%", height: 180, borderRadius: 16, marginBottom: 16,
-     background: `url(${a.screenshot}) center/cover`,
-     border: `1px solid ${t.border}`,
-    }} />
-   )}
-
-   {/* Copy Link Button */}
-   {profileLink && (
-    <button
-     onClick={() => copyText(profileLink, "link")}
+    <div
+     onClick={() => setImageRevealed(!imageRevealed)}
      style={{
-      width: "100%", padding: 12, borderRadius: 12, marginBottom: 8,
-      background: copied === "link" ? t.greenSoft : t.bgCardAlt,
-      border: `1px solid ${copied === "link" ? t.green + "40" : t.border}`,
-      cursor: "pointer", display: "flex", alignItems: "center",
-      justifyContent: "center", gap: 8,
-      color: copied === "link" ? t.green : t.text,
-      fontSize: 13, fontWeight: 600, transition: "all .2s",
+      width: "100%", height: 180, borderRadius: 16, marginBottom: 12,
+      background: `url(${a.screenshot}) center/cover`,
+      border: `1px solid ${t.border}`,
+      filter: imageRevealed ? "none" : "blur(12px)",
+      transition: "filter .4s ease",
+      cursor: "pointer", position: "relative", overflow: "hidden",
      }}
     >
-     {copied === "link" ? "✅ Link copiado!" : `Copiar link: tiktok.com/@${a.username}`}
-    </button>
+     {!imageRevealed && (
+      <div style={{
+       position: "absolute", inset: 0, display: "flex",
+       alignItems: "center", justifyContent: "center",
+       background: "rgba(0,0,0,.3)", borderRadius: 16,
+      }}>
+       <span style={{ color: "#fff", fontSize: 12, fontWeight: 600, background: "rgba(0,0,0,.5)", padding: "6px 14px", borderRadius: 8 }}>
+        Toca para revelar
+       </span>
+      </div>
+     )}
+    </div>
    )}
 
-   {/* Share/Save Image Button */}
-   {a.screenshot && (
-    <button
-     onClick={async () => {
+   {/* Quick Actions Row */}
+   <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+    {profileLink && (
+     <button onClick={() => copyText(profileLink, "link")} style={{
+      flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
+      background: copied === "link" ? t.greenSoft : t.bgCard,
+      cursor: "pointer", fontSize: 11, fontWeight: 600,
+      color: copied === "link" ? t.green : t.textSec, transition: "all .2s",
+     }}>
+      {copied === "link" ? "Copiado" : "Copiar link"}
+     </button>
+    )}
+    {a.screenshot && (
+     <button onClick={async () => {
       try {
        const res = await fetch(a.screenshot);
        const blob = await res.blob();
        const file = new File([blob], `${a.username || "cuenta"}_${(a.categories || [])[0] || "tiktok"}.png`, { type: blob.type });
        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: `@${a.username}` });
-        setCopied("image");
        } else {
         const link = document.createElement("a");
         link.href = a.screenshot;
         link.download = file.name;
         link.click();
-        setCopied("image");
        }
+       setCopied("image");
        setTimeout(() => setCopied(null), 1500);
       } catch (e) {
        if (e.name !== "AbortError") {
@@ -1311,26 +1350,18 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
         link.href = a.screenshot;
         link.download = `${a.username || "cuenta"}.png`;
         link.click();
-        setCopied("image");
-        setTimeout(() => setCopied(null), 1500);
        }
       }
-     }}
-     style={{
-      width: "100%", padding: 12, borderRadius: 12, marginBottom: 12,
-      background: copied === "image" ? t.greenSoft : t.bgCardAlt,
-      border: `1px solid ${copied === "image" ? t.green + "40" : t.border}`,
-      cursor: "pointer", display: "flex", alignItems: "center",
-      justifyContent: "center", gap: 8,
-      color: copied === "image" ? t.green : t.text,
-      fontSize: 13, fontWeight: 600, transition: "all .2s",
-     }}
-    >
-     {copied === "image"
-      ? "Imagen compartida"
-      : `Compartir imagen${(a.categories || [])[0] ? ` — ${a.categories[0]}` : ""}`}
-    </button>
-   )}
+     }} style={{
+      flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
+      background: copied === "image" ? t.greenSoft : t.bgCard,
+      cursor: "pointer", fontSize: 11, fontWeight: 600,
+      color: copied === "image" ? t.green : t.textSec,
+     }}>
+      {copied === "image" ? "Compartida" : "Compartir imagen"}
+     </button>
+    )}
+   </div>
 
    {/* Public Data */}
    <Card t={t} style={{ marginBottom: 12 }}>
@@ -1396,7 +1427,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
    <Card t={t} style={{ marginBottom: 12 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
      <div style={{ fontSize: 12, fontWeight: 700, color: t.yellow, letterSpacing: 1 }}>
-      CREDENCIALES 🔒
+      CREDENCIALES
      </div>
      <button
       onClick={() => setShowCreds(!showCreds)}
@@ -1564,12 +1595,12 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
         }}
        >Cancelar</button>
        <button
-        onClick={() => { if (sellPrice) { onSell(a.id, Number(sellPrice)); setShowSellModal(false); } }}
+        onClick={() => { if (sellPrice) { onSell(a.id, Number(sellPrice)); setShowSellModal(false); setTimeout(() => sendWhatsApp(), 500); } }}
         style={{
          flex: 1, padding: 12, borderRadius: 10, border: "none",
          background: t.green, cursor: "pointer", color: "#fff", fontWeight: 700,
         }}
-       >Confirmar</button>
+       >Vender y enviar</button>
       </div>
      </div>
     </div>
@@ -1587,7 +1618,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       maxWidth: 320, width: "100%", textAlign: "center",
       border: `1px solid ${t.border}`,
      }}>
-      <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+      <div style={{ fontSize: 20, marginBottom: 8, color: t.red }}>!</div>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>¿Eliminar cuenta?</div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 16 }}>Esta acción no se puede deshacer</div>
       <div style={{ display: "flex", gap: 8 }}>
@@ -1767,7 +1798,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
          opacity: analyzing ? 0.7 : 1,
         }}
        >
-        {analyzing ? "🔄 Analizando con IA..." : "Analizar con IA"}
+        {analyzing ? "Analizando..." : "Analizar con IA"}
        </button>
        {aiError && (
         <div style={{
@@ -1935,12 +1966,12 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
        VISTA PREVIA — DATOS DE ENTREGA
       </div>
       <div style={{ fontSize: 12, lineHeight: 1.8, color: t.textSec }}>
-       <div>👤 @{form.username || "..."}</div>
-       <div>👥 {fmtK(form.followers || 0)} seguidores</div>
+       <div>@{form.username || "..."}</div>
+       <div>{fmtK(form.followers || 0)} seguidores</div>
        <div> {form.country || "—"} • {form.niche || "—"}</div>
-       <div>📧 {form.email || "—"}</div>
-       <div>🔑 TikTok: {form.tiktokPassword || "—"}</div>
-       <div>🔑 Email: {form.emailPasswordSame ? "(Misma)" : (form.emailPassword || "—")}</div>
+       <div>Email: {form.email || "—"}</div>
+       <div>TikTok: {form.tiktokPassword || "—"}</div>
+       <div>Email pass: {form.emailPasswordSame ? "(Misma)" : (form.emailPassword || "—")}</div>
       </div>
      </Card>
 
