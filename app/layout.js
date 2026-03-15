@@ -4,19 +4,20 @@ export const metadata = {
   title: "Cimmaron",
   description: "Cuentas TikTok monetizadas",
   manifest: "/manifest.json",
-  themeColor: "#25F4EE",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Cimmaron",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#25F4EE",
 };
 
 export default function RootLayout({ children }) {
@@ -28,7 +29,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="Cimmaron" />
         <link rel="apple-touch-icon" href="/logo-icon.png" />
       </head>
-      <body>{children}</body>
+      <body style={{ touchAction: "pan-y", overscrollBehavior: "none" }}>{children}</body>
     </html>
   );
 }
