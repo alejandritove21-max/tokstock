@@ -436,40 +436,45 @@ export default function App() {
      {menuOpen && (
       <>
        <div onClick={() => setMenuOpen(false)} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 108,
+        position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 108,
+        backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
        }} />
        <div style={{
         position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
         maxWidth: 440, width: "100%", zIndex: 109,
         background: t.bgCard,
-        borderRadius: "16px 16px 0 0",
-        padding: "12px 16px calc(16px + env(safe-area-inset-bottom, 8px))",
+        borderRadius: "20px 20px 0 0",
+        padding: "0 16px calc(20px + env(safe-area-inset-bottom, 8px))",
         boxShadow: t.shadowLg,
-        animation: "slideUp .2s ease",
+        animation: "slideUp .25s ease",
        }}>
-        <div style={{ width: 32, height: 3, borderRadius: 2, background: t.border, margin: "0 auto 14px" }} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "10px auto 20px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
          {[
-          { id: "home", label: "Inicio" },
-          { id: "stock", label: "Stock" },
-          { id: "reports", label: "Reportes" },
-          { id: "search", label: "Buscar" },
-          { id: "config", label: "Config" },
-         ].map((item) => (
+          { id: "home", label: "Inicio", icon: "⌂" },
+          { id: "stock", label: "Stock", icon: "▤" },
+          { id: "reports", label: "Reportes", icon: "◩" },
+          { id: "search", label: "Buscar", icon: "○" },
+          { id: "config", label: "Config", icon: "⚙" },
+         ].map((item) => {
+          const active = tab === item.id;
+          return (
           <button
            key={item.id}
            onClick={() => { setTab(item.id); setMenuOpen(false); }}
            style={{
-            padding: "16px 8px", borderRadius: 12,
-            border: tab === item.id ? `1.5px solid ${t.accent}` : `1px solid ${t.border}`,
-            cursor: "pointer",
-            background: tab === item.id ? t.accentSoft : t.bgCardAlt,
-            display: "flex", alignItems: "center", justifyContent: "center",
+            flex: 1, padding: "12px 4px", borderRadius: 14,
+            border: "none", cursor: "pointer",
+            background: active ? t.accent : "transparent",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            transition: "all .15s",
            }}
           >
-           <span style={{ fontSize: 13, fontWeight: 600, color: tab === item.id ? t.accent : t.text }}>{item.label}</span>
+           <span style={{ fontSize: 16, color: active ? "#fff" : t.textTer, lineHeight: 1 }}>{item.icon}</span>
+           <span style={{ fontSize: 10, fontWeight: 600, color: active ? "#fff" : t.textSec }}>{item.label}</span>
           </button>
-         ))}
+          );
+         })}
         </div>
        </div>
       </>
@@ -2183,28 +2188,37 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
 // ─── REPORTS SCREEN ───
 function ReportsScreen({ accounts, t, dark }) {
  const [view, setView] = useState("daily");
+ const [expandedDay, setExpandedDay] = useState(null);
 
- // ─ Daily: last 7 days
+ // ─ Daily: last 14 days for more context
  const dailyData = useMemo(() => {
   const days = [];
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 13; i >= 0; i--) {
    const d = new Date();
    d.setDate(d.getDate() - i);
    const ds = d.toISOString().split("T")[0];
-   const label = d.toLocaleDateString("es", { weekday: "short", day: "numeric" });
+   const labelShort = d.toLocaleDateString("es", { weekday: "short", day: "numeric" });
+   const labelFull = d.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "short" });
    const sold = accounts.filter((a) => a.status === "sold" && a.soldDate === ds);
    const disq = accounts.filter((a) => a.status === "disqualified" && a.disqualifiedDate === ds);
+   const added = accounts.filter((a) => a.createdAt && a.createdAt.split("T")[0] === ds);
    const revenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0);
+   const profit = sold.reduce((s, a) => s + (a.profit || 0), 0);
+   const costSold = sold.reduce((s, a) => s + (a.purchasePrice || 0), 0);
    const losses = disq.reduce((s, a) => s + (a.purchasePrice || 0), 0);
-   const net = revenue - losses;
-   days.push({ label, sold: sold.length, revenue, losses, net, disq: disq.length });
+   const net = profit - losses;
+   days.push({ date: ds, labelShort, labelFull, sold, disq, added: added.length, revenue, profit, costSold, losses, net, soldCount: sold.length, disqCount: disq.length });
   }
   return days;
  }, [accounts]);
 
+ const last7 = dailyData.slice(-7);
+ const totalNet7 = last7.reduce((s, d) => s + d.net, 0);
+ const totalRevenue7 = last7.reduce((s, d) => s + d.revenue, 0);
+ const totalSold7 = last7.reduce((s, d) => s + d.soldCount, 0);
+
  // ─ Monthly: last 30 days
  const monthlyData = useMemo(() => {
-  const now = new Date();
   const sold30 = accounts.filter((a) => a.status === "sold" && a.soldDate && daysAgo(a.soldDate, 30));
   const disq30 = accounts.filter((a) => a.status === "disqualified" && a.disqualifiedDate && daysAgo(a.disqualifiedDate, 30));
   const bought30 = accounts.filter((a) => a.createdAt && daysAgo(a.createdAt, 30));
@@ -2214,93 +2228,57 @@ function ReportsScreen({ accounts, t, dark }) {
   const totalInvested = bought30.reduce((s, a) => s + (a.purchasePrice || 0), 0);
   const netProfit = totalProfit - totalLoss;
   const avgProfit = sold30.length ? totalProfit / sold30.length : 0;
-
-  // Weeks
   const weeks = [0, 1, 2, 3].map((w) => {
-   const start = new Date(now);
-   start.setDate(start.getDate() - 30 + w * 7);
-   const end = new Date(start);
-   end.setDate(end.getDate() + 7);
-   const ws = accounts.filter((a) => {
-    if (a.status === "sold" && a.soldDate) {
-     const d = new Date(a.soldDate);
-     return d >= start && d < end;
-    }
-    return false;
-   });
-   const wd = accounts.filter((a) => {
-    if (a.status === "disqualified" && a.disqualifiedDate) {
-     const d = new Date(a.disqualifiedDate);
-     return d >= start && d < end;
-    }
-    return false;
-   });
-   return {
-    label: `Sem ${w + 1}`,
-    profit: ws.reduce((s, a) => s + (a.profit || 0), 0),
-    loss: wd.reduce((s, a) => s + (a.purchasePrice || 0), 0),
-    net: ws.reduce((s, a) => s + (a.profit || 0), 0) - wd.reduce((s, a) => s + (a.purchasePrice || 0), 0),
-   };
+   const now = new Date();
+   const start = new Date(now); start.setDate(start.getDate() - 30 + w * 7);
+   const end = new Date(start); end.setDate(end.getDate() + 7);
+   const ws = accounts.filter((a) => a.status === "sold" && a.soldDate && new Date(a.soldDate) >= start && new Date(a.soldDate) < end);
+   const wd = accounts.filter((a) => a.status === "disqualified" && a.disqualifiedDate && new Date(a.disqualifiedDate) >= start && new Date(a.disqualifiedDate) < end);
+   return { label: `S${w + 1}`, net: ws.reduce((s, a) => s + (a.profit || 0), 0) - wd.reduce((s, a) => s + (a.purchasePrice || 0), 0) };
   });
-
-  return { totalRevenue, totalProfit, totalLoss, totalInvested, netProfit, avgProfit, soldCount: sold30.length, disqCount: disq30.length, weeks };
+  return { totalRevenue, totalProfit, totalLoss, totalInvested, netProfit, avgProfit, soldCount: sold30.length, disqCount: disq30.length, weeks, addedCount: bought30.length };
  }, [accounts]);
 
  // ─ Quarterly: last 90 days
  const quarterData = useMemo(() => {
   const sold90 = accounts.filter((a) => a.status === "sold" && a.soldDate && daysAgo(a.soldDate, 90));
   const disq90 = accounts.filter((a) => a.status === "disqualified" && a.disqualifiedDate && daysAgo(a.disqualifiedDate, 90));
-  const totalRevenue = sold90.reduce((s, a) => s + (a.realSalePrice || 0), 0);
   const totalProfit = sold90.reduce((s, a) => s + (a.profit || 0), 0);
   const totalLoss = disq90.reduce((s, a) => s + (a.purchasePrice || 0), 0);
+  const totalRevenue = sold90.reduce((s, a) => s + (a.realSalePrice || 0), 0);
   const totalInvested = [...sold90, ...disq90].reduce((s, a) => s + (a.purchasePrice || 0), 0);
   const netProfit = totalProfit - totalLoss;
-
   const months = [0, 1, 2].map((m) => {
-   const d = new Date();
-   d.setMonth(d.getMonth() - (2 - m));
+   const d = new Date(); d.setMonth(d.getMonth() - (2 - m));
    const label = d.toLocaleDateString("es", { month: "short" });
-   const mo = d.getMonth();
-   const yr = d.getFullYear();
+   const mo = d.getMonth(); const yr = d.getFullYear();
    const ms = sold90.filter((a) => { const sd = new Date(a.soldDate); return sd.getMonth() === mo && sd.getFullYear() === yr; });
    const md = disq90.filter((a) => { const dd = new Date(a.disqualifiedDate); return dd.getMonth() === mo && dd.getFullYear() === yr; });
-   const profit = ms.reduce((s, a) => s + (a.profit || 0), 0);
-   const loss = md.reduce((s, a) => s + (a.purchasePrice || 0), 0);
-   return { label, profit, loss, net: profit - loss };
+   return { label, net: ms.reduce((s, a) => s + (a.profit || 0), 0) - md.reduce((s, a) => s + (a.purchasePrice || 0), 0) };
   });
-
   const best = months.reduce((b, m) => (m.net > b.net ? m : b), months[0]);
   const worst = months.reduce((w, m) => (m.net < w.net ? m : w), months[0]);
-
-  return {
-   totalRevenue, totalProfit, totalLoss, totalInvested, netProfit,
-   avgMonthly: netProfit / 3,
-   soldCount: sold90.length, disqCount: disq90.length,
-   months, best, worst,
-  };
+  return { totalRevenue, totalProfit, totalLoss, totalInvested, netProfit, avgMonthly: netProfit / 3, soldCount: sold90.length, disqCount: disq90.length, months, best, worst };
  }, [accounts]);
 
- // ─ Bar Chart Component
- const BarChart = ({ data, valueKey = "net", labelKey = "label" }) => {
+ // ─ Graph Component
+ const MiniGraph = ({ data, valueKey = "net", labelKey = "labelShort", height: h = 100 }) => {
   const maxVal = Math.max(...data.map((d) => Math.abs(d[valueKey])), 1);
   return (
-   <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 120, padding: "10px 0" }}>
+   <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: h, padding: "8px 0" }}>
     {data.map((d, i) => {
      const val = d[valueKey];
-     const height = Math.max((Math.abs(val) / maxVal) * 80, 4);
+     const barH = Math.max((Math.abs(val) / maxVal) * (h - 30), 3);
      return (
-      <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-       <div style={{ fontSize: 9, fontWeight: 700, color: val >= 0 ? t.green : t.red }}>
-        {fmt(val)}
+      <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+       <div style={{ fontSize: 8, fontWeight: 700, color: val >= 0 ? t.green : t.red, whiteSpace: "nowrap" }}>
+        {val !== 0 ? (val >= 0 ? "+" : "") + fmt(val) : ""}
        </div>
        <div style={{
-        width: "100%", maxWidth: 40, height,
-        borderRadius: 6,
-        background: val >= 0
-         ? `linear-gradient(to top, ${t.green}40, ${t.green})`
-         : `linear-gradient(to top, ${t.red}40, ${t.red})`,
+        width: "100%", maxWidth: 28, height: barH, borderRadius: 4,
+        background: val >= 0 ? t.green : t.red, opacity: val === 0 ? 0.2 : 0.8,
        }} />
-       <div style={{ fontSize: 10, color: t.textSec, fontWeight: 500 }}>{d[labelKey]}</div>
+       <div style={{ fontSize: 8, color: t.textTer }}>{d[labelKey]}</div>
       </div>
      );
     })}
@@ -2308,134 +2286,176 @@ function ReportsScreen({ accounts, t, dark }) {
   );
  };
 
- const StatRow = ({ label, value, color }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${t.borderLight}` }}>
+ const Stat = ({ label, value, color, small }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", padding: small ? "5px 0" : "7px 0", borderBottom: `1px solid ${t.borderLight}` }}>
    <span style={{ fontSize: 12, color: t.textSec }}>{label}</span>
-   <span style={{ fontSize: 14, fontWeight: 700, color: color || t.text }}>{value}</span>
+   <span style={{ fontSize: small ? 12 : 14, fontWeight: 700, color: color || t.text }}>{value}</span>
   </div>
  );
 
  return (
   <div style={{ padding: "8px 16px 0" }}>
-   <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 16 }}>Reportes</div>
+   <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 14 }}>Reportes</div>
 
    {/* View Selector */}
-   <div style={{ display: "flex", gap: 4, marginBottom: 16, background: t.bgInput, borderRadius: 12, padding: 4 }}>
+   <div style={{ display: "flex", gap: 4, marginBottom: 14, background: t.bgInput, borderRadius: 10, padding: 3 }}>
     {[
-     { id: "daily", label: "7 Días" },
-     { id: "monthly", label: "30 Días" },
-     { id: "quarterly", label: "90 Días" },
+     { id: "daily", label: "Diario" },
+     { id: "monthly", label: "Mensual" },
+     { id: "quarterly", label: "Trimestral" },
     ].map((v) => (
-     <button
-      key={v.id}
-      onClick={() => setView(v.id)}
-      style={{
-       flex: 1, padding: 10, borderRadius: 10, border: "none",
-       cursor: "pointer", fontSize: 13, fontWeight: 700,
-       background: view === v.id ? t.text : "transparent",
-       color: view === v.id ? t.bg : t.textSec,
-       transition: "all .2s",
-      }}
-     >{v.label}</button>
+     <button key={v.id} onClick={() => setView(v.id)} style={{
+      flex: 1, padding: 8, borderRadius: 8, border: "none",
+      cursor: "pointer", fontSize: 12, fontWeight: 600,
+      background: view === v.id ? t.accent : "transparent",
+      color: view === v.id ? "#fff" : t.textSec,
+     }}>{v.label}</button>
     ))}
    </div>
 
-   {/* Daily View */}
+   {/* ═══ DAILY VIEW ═══ */}
    {view === "daily" && (
     <>
+     {/* Summary Cards */}
+     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+      <Card t={t} style={{ padding: 10, textAlign: "center" }}>
+       <div style={{ fontSize: 10, color: t.textSec }}>Neto 7d</div>
+       <div style={{ fontSize: 16, fontWeight: 800, color: totalNet7 >= 0 ? t.green : t.red, marginTop: 2 }}>{fmt(totalNet7)}</div>
+      </Card>
+      <Card t={t} style={{ padding: 10, textAlign: "center" }}>
+       <div style={{ fontSize: 10, color: t.textSec }}>Ingresos 7d</div>
+       <div style={{ fontSize: 16, fontWeight: 800, marginTop: 2 }}>{fmt(totalRevenue7)}</div>
+      </Card>
+      <Card t={t} style={{ padding: 10, textAlign: "center" }}>
+       <div style={{ fontSize: 10, color: t.textSec }}>Vendidas 7d</div>
+       <div style={{ fontSize: 16, fontWeight: 800, marginTop: 2 }}>{totalSold7}</div>
+      </Card>
+     </div>
+
+     {/* 7-Day Graph */}
      <Card t={t} style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Ganancia Neta — Últimos 7 Días</div>
-      <BarChart data={dailyData} />
+      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Ganancia neta por día</div>
+      <MiniGraph data={last7} height={90} />
      </Card>
-     {dailyData.map((d, i) => (
-      <Card t={t} key={i} style={{ marginBottom: 8, padding: 14 }}>
-       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 700 }}>{d.label}</div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: d.net >= 0 ? t.green : t.red }}>
-         {d.net >= 0 ? "+" : ""}{fmt(d.net)}
-        </div>
-       </div>
-       {(d.sold > 0 || d.disq > 0) ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 11 }}>
-         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
-          <div style={{ color: t.textSec }}>Vendidas</div>
-          <div style={{ fontWeight: 700, marginTop: 2 }}>{d.sold}</div>
-         </div>
-         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
-          <div style={{ color: t.textSec }}>Ingresos</div>
-          <div style={{ fontWeight: 700, marginTop: 2, color: t.green }}>{fmt(d.revenue)}</div>
-         </div>
-         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
-          <div style={{ color: t.textSec }}>Descalificadas</div>
-          <div style={{ fontWeight: 700, marginTop: 2 }}>{d.disq}</div>
-         </div>
-         <div style={{ padding: 8, borderRadius: 8, background: t.bgCardAlt }}>
-          <div style={{ color: t.textSec }}>Pérdidas</div>
-          <div style={{ fontWeight: 700, marginTop: 2, color: d.losses > 0 ? t.red : t.textSec }}>{fmt(d.losses)}</div>
+
+     {/* Day by Day Detail */}
+     {dailyData.slice().reverse().map((d, i) => {
+      const isExpanded = expandedDay === d.date;
+      const hasActivity = d.soldCount > 0 || d.disqCount > 0 || d.added > 0;
+      return (
+      <div key={d.date} style={{ marginBottom: 6 }}>
+       <button onClick={() => setExpandedDay(isExpanded ? null : d.date)} style={{
+        width: "100%", padding: "10px 14px", borderRadius: isExpanded ? "12px 12px 0 0" : 12,
+        border: `1px solid ${t.border}`, background: t.bgCard, cursor: "pointer",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+       }}>
+        <div style={{ textAlign: "left" }}>
+         <div style={{ fontSize: 12, fontWeight: 600, color: t.text, textTransform: "capitalize" }}>{d.labelFull}</div>
+         <div style={{ fontSize: 10, color: t.textSec, marginTop: 1 }}>
+          {d.soldCount}v · {d.disqCount}d · {d.added}a
          </div>
         </div>
-       ) : (
-        <div style={{ fontSize: 11, color: t.textTer }}>Sin actividad</div>
+        <div style={{ textAlign: "right" }}>
+         <div style={{ fontSize: 14, fontWeight: 800, color: d.net >= 0 ? t.green : d.net < 0 ? t.red : t.textTer }}>
+          {d.net !== 0 ? (d.net >= 0 ? "+" : "") + fmt(d.net) : "—"}
+         </div>
+        </div>
+       </button>
+       {isExpanded && (
+        <div style={{
+         padding: 12, border: `1px solid ${t.border}`, borderTop: "none",
+         borderRadius: "0 0 12px 12px", background: t.bgCardAlt,
+        }}>
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 11, marginBottom: hasActivity && d.sold.length > 0 ? 10 : 0 }}>
+          <div style={{ padding: 8, borderRadius: 8, background: t.bgCard }}>
+           <div style={{ color: t.textSec }}>Ingresos</div>
+           <div style={{ fontWeight: 700, color: t.green, marginTop: 2 }}>{fmt(d.revenue)}</div>
+          </div>
+          <div style={{ padding: 8, borderRadius: 8, background: t.bgCard }}>
+           <div style={{ color: t.textSec }}>Costo vendidas</div>
+           <div style={{ fontWeight: 700, marginTop: 2 }}>{fmt(d.costSold)}</div>
+          </div>
+          <div style={{ padding: 8, borderRadius: 8, background: t.bgCard }}>
+           <div style={{ color: t.textSec }}>Ganancia</div>
+           <div style={{ fontWeight: 700, color: t.green, marginTop: 2 }}>{fmt(d.profit)}</div>
+          </div>
+          <div style={{ padding: 8, borderRadius: 8, background: t.bgCard }}>
+           <div style={{ color: t.textSec }}>Pérdidas</div>
+           <div style={{ fontWeight: 700, color: d.losses > 0 ? t.red : t.textTer, marginTop: 2 }}>{fmt(d.losses)}</div>
+          </div>
+         </div>
+         {/* Individual sold accounts */}
+         {d.sold.length > 0 && (
+          <>
+           <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Cuentas vendidas:</div>
+           {d.sold.map((a, j) => (
+            <div key={j} style={{
+             display: "flex", justifyContent: "space-between", padding: "4px 0",
+             fontSize: 11, borderBottom: j < d.sold.length - 1 ? `1px solid ${t.borderLight}` : "none",
+            }}>
+             <span style={{ color: t.textSec }}>@{a.username}</span>
+             <span style={{ fontWeight: 600 }}>
+              <span style={{ color: t.textTer }}>{fmt(a.purchasePrice)} →</span>{" "}
+              <span style={{ color: t.green }}>{fmt(a.realSalePrice)}</span>{" "}
+              <span style={{ color: a.profit >= 0 ? t.green : t.red, fontWeight: 700 }}>({a.profit >= 0 ? "+" : ""}{fmt(a.profit)})</span>
+             </span>
+            </div>
+           ))}
+          </>
+         )}
+        </div>
        )}
-      </Card>
-     ))}
-     {dailyData.every((d) => d.sold === 0 && d.disq === 0) && (
-      <Card t={t} style={{ textAlign: "center", padding: 24 }}>
-       <div style={{ fontSize: 32, marginBottom: 8 }}></div>
-       <div style={{ fontSize: 13, color: t.textSec }}>Sin actividad en los últimos 7 días</div>
-      </Card>
-     )}
+      </div>
+      );
+     })}
     </>
    )}
 
-   {/* Monthly View */}
+   {/* ═══ MONTHLY VIEW ═══ */}
    {view === "monthly" && (
     <>
-     <Card t={t} style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Ganancia Neta del Mes</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: monthlyData.netProfit >= 0 ? t.green : t.red }}>
-       {fmt(monthlyData.netProfit)}
-      </div>
+     <Card t={t} style={{ marginBottom: 12, textAlign: "center", padding: 16 }}>
+      <div style={{ fontSize: 11, color: t.textSec }}>Ganancia Neta — 30 días</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: monthlyData.netProfit >= 0 ? t.green : t.red, marginTop: 4 }}>{fmt(monthlyData.netProfit)}</div>
      </Card>
      <Card t={t} style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Por Semana</div>
-      <BarChart data={monthlyData.weeks} />
+      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Por semana</div>
+      <MiniGraph data={monthlyData.weeks} valueKey="net" labelKey="label" height={80} />
      </Card>
      <Card t={t} style={{ marginBottom: 12 }}>
-      <StatRow label="Ganancias brutas" value={fmt(monthlyData.totalProfit)} color={t.green} />
-      <StatRow label="Pérdidas (descalificadas)" value={fmt(monthlyData.totalLoss)} color={t.red} />
-      <StatRow label="Invertido en el mes" value={fmt(monthlyData.totalInvested)} />
-      <StatRow label="Ingresos brutos" value={fmt(monthlyData.totalRevenue)} />
-      <StatRow label="Cuentas vendidas" value={monthlyData.soldCount} />
-      <StatRow label="Cuentas descalificadas" value={monthlyData.disqCount} />
-      <StatRow label="Ganancia promedio/cuenta" value={fmt(monthlyData.avgProfit)} color={t.green} />
+      <Stat label="Ingresos brutos" value={fmt(monthlyData.totalRevenue)} />
+      <Stat label="Ganancias" value={fmt(monthlyData.totalProfit)} color={t.green} />
+      <Stat label="Pérdidas" value={fmt(monthlyData.totalLoss)} color={t.red} />
+      <Stat label="Invertido" value={fmt(monthlyData.totalInvested)} />
+      <Stat label="Vendidas" value={monthlyData.soldCount} />
+      <Stat label="Descalificadas" value={monthlyData.disqCount} />
+      <Stat label="Agregadas" value={monthlyData.addedCount} />
+      <Stat label="Promedio/cuenta" value={fmt(monthlyData.avgProfit)} color={t.green} />
      </Card>
     </>
    )}
 
-   {/* Quarterly View */}
+   {/* ═══ QUARTERLY VIEW ═══ */}
    {view === "quarterly" && (
     <>
-     <Card t={t} style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Ganancia Neta del Trimestre</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: quarterData.netProfit >= 0 ? t.green : t.red }}>
-       {fmt(quarterData.netProfit)}
-      </div>
+     <Card t={t} style={{ marginBottom: 12, textAlign: "center", padding: 16 }}>
+      <div style={{ fontSize: 11, color: t.textSec }}>Ganancia Neta — 90 días</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: quarterData.netProfit >= 0 ? t.green : t.red, marginTop: 4 }}>{fmt(quarterData.netProfit)}</div>
      </Card>
      <Card t={t} style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Por Mes</div>
-      <BarChart data={quarterData.months} />
+      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Por mes</div>
+      <MiniGraph data={quarterData.months} valueKey="net" labelKey="label" height={80} />
      </Card>
      <Card t={t} style={{ marginBottom: 12 }}>
-      <StatRow label="Ganancias brutas" value={fmt(quarterData.totalProfit)} color={t.green} />
-      <StatRow label="Pérdidas (descalificadas)" value={fmt(quarterData.totalLoss)} color={t.red} />
-      <StatRow label="Invertido en el trimestre" value={fmt(quarterData.totalInvested)} />
-      <StatRow label="Ingresos brutos" value={fmt(quarterData.totalRevenue)} />
-      <StatRow label="Cuentas vendidas" value={quarterData.soldCount} />
-      <StatRow label="Cuentas descalificadas" value={quarterData.disqCount} />
-      <StatRow label="Promedio mensual" value={fmt(quarterData.avgMonthly)} color={quarterData.avgMonthly >= 0 ? t.green : t.red} />
-      <StatRow label="Mejor mes" value={`${quarterData.best.label}: ${fmt(quarterData.best.net)}`} color={t.green} />
-      <StatRow label="Peor mes" value={`${quarterData.worst.label}: ${fmt(quarterData.worst.net)}`} color={t.red} />
+      <Stat label="Ingresos brutos" value={fmt(quarterData.totalRevenue)} />
+      <Stat label="Ganancias" value={fmt(quarterData.totalProfit)} color={t.green} />
+      <Stat label="Pérdidas" value={fmt(quarterData.totalLoss)} color={t.red} />
+      <Stat label="Invertido" value={fmt(quarterData.totalInvested)} />
+      <Stat label="Vendidas" value={quarterData.soldCount} />
+      <Stat label="Descalificadas" value={quarterData.disqCount} />
+      <Stat label="Promedio mensual" value={fmt(quarterData.avgMonthly)} color={quarterData.avgMonthly >= 0 ? t.green : t.red} />
+      <Stat label="Mejor mes" value={`${quarterData.best.label}: ${fmt(quarterData.best.net)}`} color={t.green} />
+      <Stat label="Peor mes" value={`${quarterData.worst.label}: ${fmt(quarterData.worst.net)}`} color={t.red} />
      </Card>
     </>
    )}
