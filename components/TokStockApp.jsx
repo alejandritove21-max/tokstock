@@ -272,6 +272,10 @@ export default function App() {
     setCategories(c);
     try { await db.setSetting("categories", c); } catch {}
   };
+  const saveAiProviders = async (providers) => {
+    setAiProviders(providers);
+    try { await db.setSetting("aiProviders", providers); } catch {}
+  };
 
   // ─── LOADING SCREEN ───
   if (loading) {
@@ -377,6 +381,7 @@ export default function App() {
               countries={countries} saveCountries={saveCountries}
               categories={categories} saveCategories={saveCategories}
               aiProviders={aiProviders} setAiProviders={setAiProviders}
+              saveAiProviders={saveAiProviders}
             />
           )}
 
@@ -1152,7 +1157,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
           }}>
             ✏️ Editar
           </button>
-          {a.status === "available" && (
+          {a.status !== "disqualified" && (
             <button onClick={() => onDisqualify(a.id)} style={{
               flex: 1, padding: 12, borderRadius: 12,
               background: t.redSoft, border: `1px solid ${t.red}30`,
@@ -1271,6 +1276,8 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
 // ─── ACCOUNT FORM (3 Steps) ───
 function AccountForm({ t, dark, countries, categories, aiProviders, account, onSave, onCancel }) {
   const [step, setStep] = useState(1);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [form, setForm] = useState({
     username: account?.username || "",
     profileName: account?.profileName || "",
@@ -1303,6 +1310,99 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
       reader.onload = (ev) => upd("screenshot", ev.target.result);
       reader.readAsDataURL(file);
     }
+  };
+
+  // ─── AI Image Analysis ───
+  const analyzeWithAI = async () => {
+    const activeProvider = aiProviders.find((p) => p.active && p.key);
+    if (!activeProvider) {
+      setAiError("No hay IA configurada. Ve a Config → Inteligencia Artificial.");
+      return;
+    }
+    if (!form.screenshot) {
+      setAiError("Sube una imagen primero.");
+      return;
+    }
+
+    setAnalyzing(true);
+    setAiError("");
+    const base64 = form.screenshot.split(",")[1];
+    const prompt = `Analyze this TikTok profile screenshot. Extract and return ONLY a JSON object with these fields (no extra text, no markdown):
+{"username": "the @username without @", "profileName": "display name", "followers": number, "niche": "content category like Fitness/Gaming/Fashion/etc", "categories": ["array of applicable tags from: Creator Rare, TikTok Shop, Verificada, Monetizable, Alto Engagement, Vintage 3+, Monetizada"]}
+If you can't determine a field, use null. Return ONLY the JSON.`;
+
+    try {
+      let result = null;
+
+      if (activeProvider.name.includes("OpenAI")) {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${activeProvider.key}` },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } }
+            ]}],
+            max_tokens: 500,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        result = data.choices?.[0]?.message?.content;
+      }
+      else if (activeProvider.name.includes("Gemini")) {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeProvider.key}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: prompt },
+              { inline_data: { mime_type: "image/jpeg", data: base64 } }
+            ]}],
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        result = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      }
+      else if (activeProvider.name.includes("Claude")) {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": activeProvider.key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 500,
+            messages: [{ role: "user", content: [
+              { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+              { type: "text", text: prompt }
+            ]}],
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error?.message || "Error de Claude");
+        result = data.content?.[0]?.text;
+      }
+
+      if (result) {
+        const clean = result.replace(/```json\n?|```\n?/g, "").trim();
+        const parsed = JSON.parse(clean);
+        if (parsed.username) upd("username", parsed.username.replace("@", ""));
+        if (parsed.profileName) setForm((f) => ({ ...f, profileName: parsed.profileName }));
+        if (parsed.followers) setForm((f) => ({ ...f, followers: parsed.followers }));
+        if (parsed.niche) setForm((f) => ({ ...f, niche: parsed.niche }));
+        if (parsed.categories?.length) setForm((f) => ({ ...f, categories: parsed.categories }));
+        setAiError("");
+      }
+    } catch (e) {
+      setAiError("Error IA: " + (e.message || "No se pudo analizar"));
+    }
+    setAnalyzing(false);
   };
 
   const inputStyle = {
@@ -1364,6 +1464,38 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
                   display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
                 }}
               >{Icons.x}</button>
+              {/* AI Analyze Button */}
+              <button
+                onClick={analyzeWithAI}
+                disabled={analyzing}
+                style={{
+                  width: "100%", marginTop: 10, padding: 12, borderRadius: 10,
+                  border: "none", cursor: analyzing ? "wait" : "pointer",
+                  background: analyzing
+                    ? t.bgInput
+                    : `linear-gradient(135deg, #8b5cf6, #6d28d9)`,
+                  color: "#fff", fontSize: 13, fontWeight: 700,
+                  opacity: analyzing ? 0.7 : 1,
+                }}
+              >
+                {analyzing ? "🔄 Analizando con IA..." : "🤖 Analizar con IA"}
+              </button>
+              {aiError && (
+                <div style={{
+                  marginTop: 8, fontSize: 12, color: t.red,
+                  background: t.redSoft, padding: 8, borderRadius: 8,
+                }}>
+                  {aiError}
+                </div>
+              )}
+              {!analyzing && form.username && form.screenshot && (
+                <div style={{
+                  marginTop: 8, fontSize: 11, color: t.green,
+                  background: t.greenSoft, padding: 8, borderRadius: 8,
+                }}>
+                  ✅ Datos extraídos: @{form.username} • {fmtK(form.followers)} seg. • {form.niche || "—"}
+                </div>
+              )}
             </div>
           ) : (
             <label style={{
@@ -1876,7 +2008,7 @@ function SearchScreen({ accounts, t, dark, onSelect }) {
 }
 
 // ─── CONFIG SCREEN ───
-function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categories, saveCategories, aiProviders, setAiProviders }) {
+function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categories, saveCategories, aiProviders, setAiProviders, saveAiProviders }) {
   const [section, setSection] = useState(null);
   const [newCountry, setNewCountry] = useState({ emoji: "", name: "" });
   const [newCategory, setNewCategory] = useState("");
@@ -2004,20 +2136,39 @@ function ConfigScreen({ t, dark, toggleTheme, countries, saveCountries, categori
                 color: t.text, fontSize: 12, fontFamily: "monospace", outline: "none",
               }}
             />
-            <button
-              onClick={() => {
-                const updated = [...aiProviders];
-                updated[i] = { ...p, active: !p.active };
-                setAiProviders(updated);
-              }}
-              style={{
-                marginTop: 8, width: "100%", padding: 8, borderRadius: 8,
-                border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                background: p.active ? t.greenSoft : t.bgInput,
-                color: p.active ? t.green : t.textSec,
-              }}
-            >
-              {p.active ? "✓ Activo — Usar este proveedor" : "Activar"}
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <button
+                onClick={() => {
+                  const updated = [...aiProviders];
+                  updated[i] = { ...p, active: !p.active };
+                  setAiProviders(updated);
+                  saveAiProviders(updated);
+                }}
+                style={{
+                  flex: 1, padding: 8, borderRadius: 8,
+                  border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+                  background: p.active ? t.greenSoft : t.bgInput,
+                  color: p.active ? t.green : t.textSec,
+                }}
+              >
+                {p.active ? "✓ Activo" : "Activar"}
+              </button>
+              <button
+                onClick={() => {
+                  const updated = [...aiProviders];
+                  updated[i] = { ...p, key: updated[i].key };
+                  setAiProviders(updated);
+                  saveAiProviders(updated);
+                }}
+                style={{
+                  flex: 1, padding: 8, borderRadius: 8,
+                  border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  background: t.accent, color: "#fff",
+                }}
+              >
+                💾 Guardar Key
+              </button>
+            </div>
             </button>
           </Card>
         ))}
