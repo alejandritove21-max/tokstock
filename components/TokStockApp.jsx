@@ -216,12 +216,12 @@ export default function App() {
   setSyncing(false);
  };
 
- const sellAccount = async (id, realPrice) => {
+ const sellAccount = async (id, realPrice, buyer) => {
   setSyncing(true);
   try {
    const acc = accounts.find((a) => a.id === id);
    const profit = realPrice - (acc.purchasePrice || 0);
-   const updates = { status: "sold", realSalePrice: realPrice, profit, soldDate: today() };
+   const updates = { status: "sold", realSalePrice: realPrice, profit, soldDate: today(), buyer: buyer || "" };
    const updated = await db.updateAccount(id, updates);
    setAccounts((prev) => prev.map((a) => (a.id === id ? updated : a)));
    setSelectedAccount(updated);
@@ -1333,6 +1333,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
  const [showCreds, setShowCreds] = useState(false);
  const [showSellModal, setShowSellModal] = useState(false);
  const [sellPrice, setSellPrice] = useState("");
+ const [sellBuyer, setSellBuyer] = useState("");
  const [copied, setCopied] = useState(null);
  const [confirmDelete, setConfirmDelete] = useState(false);
  const [confirmDisqualify, setConfirmDisqualify] = useState(false);
@@ -1527,6 +1528,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
      ["Precio Estimado", fmt(a.estimatedSalePrice), t.text],
      a.status === "sold" && ["Precio de Venta Real", fmt(a.realSalePrice), t.blue],
      a.status === "sold" && ["Ganancia", fmt(a.profit), a.profit >= 0 ? t.green : t.red],
+     a.status === "sold" && a.buyer && ["Vendida a", a.buyer, t.accent],
     ].filter(Boolean).map(([l, v, c], i) => (
      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${t.borderLight}` }}>
       <span style={{ fontSize: 12, color: t.textSec }}>{l}</span>
@@ -1637,6 +1639,15 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
      <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
      Enviar por WhatsApp
     </button>
+    {a.status === "sold" && (
+     <button onClick={() => setConfirmRestore(true)} style={{
+      width: "100%", padding: 12, borderRadius: 12,
+      background: t.blueSoft, border: `1px solid ${t.blue}20`,
+      cursor: "pointer", color: t.blue, fontSize: 13, fontWeight: 600,
+     }}>
+      Poner como disponible
+     </button>
+    )}
     <div style={{ display: "flex", gap: 8 }}>
      <button onClick={() => onEdit(a)} style={{
       flex: 1, padding: 12, borderRadius: 12,
@@ -1689,8 +1700,19 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
      }}>
       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Registrar Venta</div>
       <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
-       Precio de compra: {fmt(a.purchasePrice)}
+       @{a.username} — Compra: {fmt(a.purchasePrice)}
       </div>
+      <label style={{ fontSize: 11, fontWeight: 600, color: t.textSec, marginBottom: 4, display: "block" }}>¿A quién se la vendiste?</label>
+      <input
+       type="text" placeholder="Nombre del comprador"
+       value={sellBuyer} onChange={(e) => setSellBuyer(e.target.value)}
+       style={{
+        width: "100%", padding: 12, borderRadius: 10,
+        border: `1px solid ${t.border}`, background: t.bgInput,
+        color: t.text, fontSize: 14, marginBottom: 12, outline: "none",
+       }}
+      />
+      <label style={{ fontSize: 11, fontWeight: 600, color: t.textSec, marginBottom: 4, display: "block" }}>Precio de venta</label>
       <input
        type="number" placeholder="Precio de venta real ($)"
        value={sellPrice} onChange={(e) => setSellPrice(e.target.value)}
@@ -1711,14 +1733,14 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       )}
       <div style={{ display: "flex", gap: 8 }}>
        <button
-        onClick={() => setShowSellModal(false)}
+        onClick={() => { setShowSellModal(false); setSellBuyer(""); setSellPrice(""); }}
         style={{
          flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
          background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
         }}
        >Cancelar</button>
        <button
-        onClick={() => { if (sellPrice) { onSell(a.id, Number(sellPrice)); setShowSellModal(false); setTimeout(() => sendWhatsApp(), 500); } }}
+        onClick={() => { if (sellPrice) { onSell(a.id, Number(sellPrice), sellBuyer); setShowSellModal(false); setSellBuyer(""); setSellPrice(""); setTimeout(() => sendWhatsApp(), 500); } }}
         style={{
          flex: 1, padding: 12, borderRadius: 10, border: "none",
          background: t.green, cursor: "pointer", color: "#fff", fontWeight: 700,
@@ -2136,7 +2158,14 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
        flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
        background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
       }}>← Atrás</button>
-      <button onClick={() => setStep(3)} style={{
+      <button onClick={() => {
+       if (!form.username) { alert("El nombre de usuario es obligatorio"); return; }
+       if (!form.followers) { alert("Los seguidores son obligatorios"); return; }
+       if (!form.country) { alert("El país es obligatorio"); return; }
+       if (!form.purchasePrice) { alert("El precio de compra es obligatorio"); return; }
+       if (!form.estimatedSalePrice) { alert("El precio estimado es obligatorio"); return; }
+       setStep(3);
+      }} style={{
        flex: 1, padding: 12, borderRadius: 10, border: "none",
        background: t.accent, cursor: "pointer", color: "#fff", fontWeight: 700,
       }}>Siguiente →</button>
