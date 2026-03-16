@@ -54,10 +54,17 @@ const fmtK = (n) => {
  return n.toString();
 };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-const today = () => new Date().toISOString().split("T")[0];
+
+// Venezuela timezone (America/Caracas, UTC-4)
+const VE_TZ = "America/Caracas";
+const nowVE = () => new Date(new Date().toLocaleString("en-US", { timeZone: VE_TZ }));
+const today = () => {
+ const d = nowVE();
+ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+};
 const daysAgo = (d, n) => {
  const date = new Date(d);
- const ref = new Date();
+ const ref = nowVE();
  ref.setDate(ref.getDate() - n);
  return date >= ref;
 };
@@ -556,31 +563,31 @@ function Card({ t, children, style = {}, onClick }) {
 function AccountListItem({ account, t, onSelect }) {
  const a = account;
  return (
-  <Card t={t} onClick={() => onSelect(a)} style={{ marginBottom: 10, animation: "fadeIn .4s ease" }}>
-   <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+  <Card t={t} onClick={() => onSelect(a)} style={{ marginBottom: 8, animation: "fadeIn .4s ease", padding: 12 }}>
+   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
     <div style={{
-     width: 48, height: 48, borderRadius: 12,
-     background: a.screenshot ? `url(${a.screenshot}) center/cover` : `linear-gradient(135deg, ${t.accent}30, ${t.accent}10)`,
+     width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
      display: "flex", alignItems: "center", justifyContent: "center",
-     fontSize: 22, flexShrink: 0,
+     fontSize: 18,
     }}>
-     {!a.screenshot && "🎵"}
+     {!a.screenshot && "•"}
     </div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ fontWeight: 700, fontSize: 14, color: t.text }}>
-       @{a.username || "sin_nombre"}
+    <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+       @{a.username || "—"}
       </span>
       <StatusBadge status={a.status} t={t} />
      </div>
-     <div style={{ display: "flex", gap: 8, marginTop: 4, fontSize: 11, color: t.textSec }}>
-      <span>{fmtK(a.followers)} seg.</span>
-      <span>•</span>
-      <span>{a.country || "—"}</span>
-      {a.categories?.[0] && <><span>•</span><span style={{ color: t.accent }}>{a.categories[0]}</span></>}
+     <div style={{ display: "flex", gap: 4, marginTop: 3, fontSize: 11, color: t.textSec, whiteSpace: "nowrap" }}>
+      <span>{fmtK(a.followers)}</span>
+      <span>·</span>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
+      {a.categories?.[0] && <><span>·</span><span style={{ color: t.accent, overflow: "hidden", textOverflow: "ellipsis" }}>{a.categories[0]}</span></>}
      </div>
     </div>
-    <div style={{ textAlign: "right" }}>
+    <div style={{ textAlign: "right", flexShrink: 0, minWidth: 64 }}>
      <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>
       {fmt(a.estimatedSalePrice || a.purchasePrice)}
      </div>
@@ -608,7 +615,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
   })();
  }, []);
 
- const todayDate = new Date().toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+ const todayDate = nowVE().toLocaleDateString("es", { timeZone: VE_TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
  const stats = useMemo(() => {
   const sold = accounts.filter((a) => a.status === "sold");
@@ -624,8 +631,8 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
 
  // ─── Period-based metrics ───
  const periodStats = useMemo(() => {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
+  const now = nowVE();
+  const todayStr = today();
 
   const calcPeriod = (numDays) => {
    const isToday = numDays === 0;
@@ -2254,11 +2261,11 @@ function ReportsScreen({ accounts, t, dark }) {
  const dailyData = useMemo(() => {
   const days = [];
   for (let i = 13; i >= 0; i--) {
-   const d = new Date();
+   const d = nowVE();
    d.setDate(d.getDate() - i);
-   const ds = d.toISOString().split("T")[0];
-   const labelShort = d.toLocaleDateString("es", { weekday: "short", day: "numeric" });
-   const labelFull = d.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "short" });
+   const ds = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+   const labelShort = d.toLocaleDateString("es", { timeZone: VE_TZ, weekday: "short", day: "numeric" });
+   const labelFull = d.toLocaleDateString("es", { timeZone: VE_TZ, weekday: "long", day: "numeric", month: "short" });
    const sold = accounts.filter((a) => a.status === "sold" && a.soldDate === ds);
    const disq = accounts.filter((a) => a.status === "disqualified" && a.disqualifiedDate === ds);
    const added = accounts.filter((a) => a.createdAt && a.createdAt.split("T")[0] === ds);
@@ -2289,7 +2296,7 @@ function ReportsScreen({ accounts, t, dark }) {
   const netProfit = totalProfit - totalLoss;
   const avgProfit = sold30.length ? totalProfit / sold30.length : 0;
   const weeks = [0, 1, 2, 3].map((w) => {
-   const now = new Date();
+   const now = nowVE();
    const start = new Date(now); start.setDate(start.getDate() - 30 + w * 7);
    const end = new Date(start); end.setDate(end.getDate() + 7);
    const ws = accounts.filter((a) => a.status === "sold" && a.soldDate && new Date(a.soldDate) >= start && new Date(a.soldDate) < end);
@@ -2309,8 +2316,8 @@ function ReportsScreen({ accounts, t, dark }) {
   const totalInvested = [...sold90, ...disq90].reduce((s, a) => s + (a.purchasePrice || 0), 0);
   const netProfit = totalProfit - totalLoss;
   const months = [0, 1, 2].map((m) => {
-   const d = new Date(); d.setMonth(d.getMonth() - (2 - m));
-   const label = d.toLocaleDateString("es", { month: "short" });
+   const d = nowVE(); d.setMonth(d.getMonth() - (2 - m));
+   const label = d.toLocaleDateString("es", { timeZone: VE_TZ, month: "short" });
    const mo = d.getMonth(); const yr = d.getFullYear();
    const ms = sold90.filter((a) => { const sd = new Date(a.soldDate); return sd.getMonth() === mo && sd.getFullYear() === yr; });
    const md = disq90.filter((a) => { const dd = new Date(a.disqualifiedDate); return dd.getMonth() === mo && dd.getFullYear() === yr; });
