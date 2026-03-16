@@ -534,9 +534,10 @@ function StatusBadge({ status, t }) {
  const c = config[status] || config.available;
  return (
   <span style={{
-   fontSize: 10, fontWeight: 700, padding: "3px 8px",
-   borderRadius: 6, background: c.bg, color: c.color,
-   textTransform: "uppercase", letterSpacing: 0.5,
+   fontSize: 9, fontWeight: 700, padding: "2px 6px",
+   borderRadius: 5, background: c.bg, color: c.color,
+   textTransform: "uppercase", letterSpacing: 0.3,
+   whiteSpace: "nowrap", flexShrink: 0,
   }}>
    {c.label}
   </span>
@@ -567,48 +568,30 @@ function AccountListItem({ account, t, onSelect }) {
   <div
    onClick={() => onSelect(a)}
    style={{
-    display: "flex", alignItems: "center", gap: 10,
+    display: "grid",
+    gridTemplateColumns: "42px 1fr 68px",
+    gap: 10, alignItems: "center",
     padding: "10px 12px", marginBottom: 6, borderRadius: 12,
     background: t.bgCard, border: `1px solid ${t.border}`,
-    cursor: "pointer", height: 64, overflow: "hidden",
+    cursor: "pointer", minHeight: 62, maxHeight: 62, overflow: "hidden",
    }}
   >
-   {/* Thumbnail - fixed */}
    <div style={{
-    width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+    width: 42, height: 42, borderRadius: 10,
     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
    }} />
-
-   {/* Info - flex, single line each */}
-   <div style={{ flex: 1, minWidth: 0 }}>
-    <div style={{
-     display: "flex", alignItems: "center", gap: 6,
-     height: 20, overflow: "hidden",
-    }}>
-     <span style={{
-      fontWeight: 700, fontSize: 13, color: t.text,
-      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-      maxWidth: 130,
-     }}>@{a.username || "—"}</span>
-     <StatusBadge status={a.status} t={t} />
+   <div style={{ overflow: "hidden" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, height: 18, overflow: "hidden" }}>
+     <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{a.username || "—"}</span>
+     <span style={{ flexShrink: 0 }}><StatusBadge status={a.status} t={t} /></span>
     </div>
-    <div style={{
-     fontSize: 11, color: t.textSec, marginTop: 2,
-     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-     height: 16, lineHeight: "16px",
-    }}>
-     {fmtK(a.followers)} · {a.country || "—"}{cat ? ` · ` : ""}{cat && <span style={{ color: t.accent }}>{cat}</span>}
+    <div style={{ fontSize: 11, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", height: 16, lineHeight: "16px", marginTop: 2 }}>
+     {fmtK(a.followers)} · {a.country || "—"}{cat ? ` · ${cat}` : ""}
     </div>
    </div>
-
-   {/* Price - fixed right */}
-   <div style={{ textAlign: "right", flexShrink: 0, width: 70 }}>
-    <div style={{ fontSize: 14, fontWeight: 700, color: t.text, whiteSpace: "nowrap" }}>
-     {fmt(a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice))}
-    </div>
-    <div style={{ fontSize: 10, color: t.textSec }}>
-     {a.status === "sold" ? "vendida" : "estimado"}
-    </div>
+   <div style={{ textAlign: "right" }}>
+    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, whiteSpace: "nowrap" }}>{fmt(a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice))}</div>
+    <div style={{ fontSize: 9, color: t.textSec }}>{a.status === "sold" ? "vendida" : "estimado"}</div>
    </div>
   </div>
  );
@@ -699,13 +682,16 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
    <div style={{ marginBottom: 14 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
-     <div style={{
-      padding: "3px 8px", borderRadius: 12,
-      background: dbConnected ? t.greenSoft : t.redSoft,
-      display: "flex", alignItems: "center", gap: 4,
-     }}>
-      <div style={{ width: 4, height: 4, borderRadius: 2, background: dbConnected ? t.green : t.red }} />
-      <span style={{ fontSize: 9, fontWeight: 600, color: dbConnected ? t.green : t.red }}>{dbConnected ? "Sync" : "Off"}</span>
+     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 9, color: t.textTer }}>v23</span>
+      <div style={{
+       padding: "3px 8px", borderRadius: 12,
+       background: dbConnected ? t.greenSoft : t.redSoft,
+       display: "flex", alignItems: "center", gap: 4,
+      }}>
+       <div style={{ width: 4, height: 4, borderRadius: 2, background: dbConnected ? t.green : t.red }} />
+       <span style={{ fontSize: 9, fontWeight: 600, color: dbConnected ? t.green : t.red }}>{dbConnected ? "Sync" : "Off"}</span>
+      </div>
      </div>
     </div>
     {locationInfo && (
