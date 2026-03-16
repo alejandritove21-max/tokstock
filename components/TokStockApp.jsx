@@ -562,41 +562,55 @@ function Card({ t, children, style = {}, onClick }) {
 // ─── ACCOUNT CARD IN LIST ───
 function AccountListItem({ account, t, onSelect }) {
  const a = account;
+ const cat = (a.categories || [])[0] || "";
  return (
-  <Card t={t} onClick={() => onSelect(a)} style={{ marginBottom: 8, animation: "fadeIn .4s ease", padding: 12 }}>
-   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+  <div
+   onClick={() => onSelect(a)}
+   style={{
+    display: "flex", alignItems: "center", gap: 10,
+    padding: "10px 12px", marginBottom: 6, borderRadius: 12,
+    background: t.bgCard, border: `1px solid ${t.border}`,
+    cursor: "pointer", height: 64, overflow: "hidden",
+   }}
+  >
+   {/* Thumbnail - fixed */}
+   <div style={{
+    width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+    background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
+   }} />
+
+   {/* Info - flex, single line each */}
+   <div style={{ flex: 1, minWidth: 0 }}>
     <div style={{
-     width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
-     display: "flex", alignItems: "center", justifyContent: "center",
-     fontSize: 18,
+     display: "flex", alignItems: "center", gap: 6,
+     height: 20, overflow: "hidden",
     }}>
-     {!a.screenshot && "•"}
+     <span style={{
+      fontWeight: 700, fontSize: 13, color: t.text,
+      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+      maxWidth: 130,
+     }}>@{a.username || "—"}</span>
+     <StatusBadge status={a.status} t={t} />
     </div>
-    <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-       @{a.username || "—"}
-      </span>
-      <StatusBadge status={a.status} t={t} />
-     </div>
-     <div style={{ display: "flex", gap: 4, marginTop: 3, fontSize: 11, color: t.textSec, whiteSpace: "nowrap" }}>
-      <span>{fmtK(a.followers)}</span>
-      <span>·</span>
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
-      {a.categories?.[0] && <><span>·</span><span style={{ color: t.accent, overflow: "hidden", textOverflow: "ellipsis" }}>{a.categories[0]}</span></>}
-     </div>
-    </div>
-    <div style={{ textAlign: "right", flexShrink: 0, minWidth: 64 }}>
-     <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>
-      {fmt(a.estimatedSalePrice || a.purchasePrice)}
-     </div>
-     <div style={{ fontSize: 10, color: t.textSec }}>
-      {a.status === "sold" ? "vendida" : "estimado"}
-     </div>
+    <div style={{
+     fontSize: 11, color: t.textSec, marginTop: 2,
+     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+     height: 16, lineHeight: "16px",
+    }}>
+     {fmtK(a.followers)} · {a.country || "—"}{cat ? ` · ` : ""}{cat && <span style={{ color: t.accent }}>{cat}</span>}
     </div>
    </div>
-  </Card>
+
+   {/* Price - fixed right */}
+   <div style={{ textAlign: "right", flexShrink: 0, width: 70 }}>
+    <div style={{ fontSize: 14, fontWeight: 700, color: t.text, whiteSpace: "nowrap" }}>
+     {fmt(a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice))}
+    </div>
+    <div style={{ fontSize: 10, color: t.textSec }}>
+     {a.status === "sold" ? "vendida" : "estimado"}
+    </div>
+   </div>
+  </div>
  );
 }
 
