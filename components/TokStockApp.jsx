@@ -158,6 +158,7 @@ export default function App() {
     const connected = await db.testConnection();
     dbConnected = connected;
     if (connected) {
+     // Load accounts WITHOUT screenshots (fast, avoids timeout)
      const accs = await db.getAccounts();
      setAccounts(accs);
      const savedCountries = await db.getSetting("countries");
@@ -170,6 +171,13 @@ export default function App() {
      if (savedTheme !== null) setDark(savedTheme);
      const savedTemplate = await db.getSetting("whatsappTemplate");
      if (savedTemplate) setWhatsappTemplate(savedTemplate);
+     // Load screenshots in background (batched, won't timeout)
+     try {
+      const imgs = await db.getScreenshots();
+      if (Object.keys(imgs).length > 0) {
+       setAccounts(prev => prev.map(a => imgs[a.id] ? { ...a, screenshot: imgs[a.id] } : a));
+      }
+     } catch (e) { console.warn("Screenshots load skipped:", e); }
     }
    } catch (e) {
     console.error("Load error:", e);
