@@ -577,29 +577,32 @@ function AccountListItem({ account, t, onSelect }) {
    onClick={() => onSelect(a)}
    style={{
     display: "grid",
-    gridTemplateColumns: "42px 1fr 68px",
+    gridTemplateColumns: "42px 1fr 72px",
     gap: 10, alignItems: "center",
     padding: "10px 12px", marginBottom: 6, borderRadius: 12,
     background: t.bgCard, border: `1px solid ${t.border}`,
-    cursor: "pointer", minHeight: 62, maxHeight: 62, overflow: "hidden",
+    cursor: "pointer", height: 62, overflow: "hidden",
    }}
   >
    <div style={{
     width: 42, height: 42, borderRadius: 10,
     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
    }} />
-   <div style={{ overflow: "hidden" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 6, height: 18, overflow: "hidden" }}>
-     <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{a.username || "—"}</span>
+   <div style={{ overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
+     <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 1 }}>@{a.username || "—"}</span>
      <span style={{ flexShrink: 0 }}><StatusBadge status={a.status} t={t} /></span>
     </div>
-    <div style={{ fontSize: 11, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", height: 16, lineHeight: "16px", marginTop: 2 }}>
-     {fmtK(a.followers)} · {a.country || "—"}{cat ? ` · ${cat}` : ""}
+    <div style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+     <span>{fmtK(a.followers)}</span>
+     <span style={{ margin: "0 3px" }}>·</span>
+     <span>{a.country || "—"}</span>
+     {cat ? <><span style={{ margin: "0 3px" }}>·</span><span style={{ color: t.accent }}>{cat}</span></> : null}
     </div>
    </div>
-   <div style={{ textAlign: "right" }}>
-    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, whiteSpace: "nowrap" }}>{fmt(a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice))}</div>
-    <div style={{ fontSize: 9, color: t.textSec }}>{a.status === "sold" ? "vendida" : "estimado"}</div>
+   <div style={{ textAlign: "right", flexShrink: 0 }}>
+    <div style={{ fontSize: 14, fontWeight: 700, color: t.text, whiteSpace: "nowrap" }}>{fmt(a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice))}</div>
+    <div style={{ fontSize: 9, color: t.textSec, marginTop: 1 }}>{a.status === "sold" ? "vendida" : "estimado"}</div>
    </div>
   </div>
  );
@@ -691,7 +694,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v23</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v25</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -2199,14 +2202,29 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
      <label style={labelStyle}>Contraseña de TikTok</label>
      <input type="text" placeholder="Contraseña" value={form.tiktokPassword} onChange={(e) => upd("tiktokPassword", e.target.value)} style={inputStyle} />
 
-     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-      <input
-       type="checkbox" checked={form.emailPasswordSame}
-       onChange={(e) => upd("emailPasswordSame", e.target.checked)}
-       style={{ width: 18, height: 18, accentColor: t.accent }}
-      />
-      <label style={{ fontSize: 13, color: t.textSec }}>La contraseña del email es la misma</label>
-     </div>
+     <button
+      onClick={() => upd("emailPasswordSame", !form.emailPasswordSame)}
+      style={{
+       display: "flex", alignItems: "center", gap: 10, marginBottom: 12,
+       padding: "10px 14px", borderRadius: 10, width: "100%",
+       border: `1px solid ${form.emailPasswordSame ? t.green + "40" : t.border}`,
+       background: form.emailPasswordSame ? t.greenSoft : t.bgInput,
+       cursor: "pointer", transition: "all .2s",
+      }}
+     >
+      <div style={{
+       width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+       border: form.emailPasswordSame ? "none" : `2px solid ${t.textTer}`,
+       background: form.emailPasswordSame ? t.green : "transparent",
+       display: "flex", alignItems: "center", justifyContent: "center",
+       transition: "all .2s",
+      }}>
+       {form.emailPasswordSame && <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>✓</span>}
+      </div>
+      <span style={{ fontSize: 13, color: form.emailPasswordSame ? t.green : t.textSec, fontWeight: form.emailPasswordSame ? 600 : 400 }}>
+       {form.emailPasswordSame ? "Misma contraseña que TikTok ✓" : "La contraseña del email es la misma"}
+      </span>
+     </button>
 
      {!form.emailPasswordSame && (
       <>
@@ -2465,15 +2483,21 @@ function ReportsScreen({ accounts, t, dark }) {
            <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Cuentas vendidas:</div>
            {d.sold.map((a, j) => (
             <div key={j} style={{
-             display: "flex", justifyContent: "space-between", padding: "4px 0",
+             padding: "6px 0",
              fontSize: 11, borderBottom: j < d.sold.length - 1 ? `1px solid ${t.borderLight}` : "none",
             }}>
-             <span style={{ color: t.textSec }}>@{a.username}</span>
-             <span style={{ fontWeight: 600 }}>
-              <span style={{ color: t.textTer }}>{fmt(a.purchasePrice)} →</span>{" "}
-              <span style={{ color: t.green }}>{fmt(a.realSalePrice)}</span>{" "}
-              <span style={{ color: a.profit >= 0 ? t.green : t.red, fontWeight: 700 }}>({a.profit >= 0 ? "+" : ""}{fmt(a.profit)})</span>
-             </span>
+             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: t.text, fontWeight: 600 }}>@{a.username}</span>
+              <span style={{ fontWeight: 700, color: a.profit >= 0 ? t.green : t.red }}>
+               {a.profit >= 0 ? "+" : ""}{fmt(a.profit)}
+              </span>
+             </div>
+             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2, fontSize: 10 }}>
+              <span style={{ color: t.textTer }}>
+               {fmt(a.purchasePrice)} → {fmt(a.realSalePrice)}
+               {a.buyer ? ` · ${a.buyer}` : ""}
+              </span>
+             </div>
             </div>
            ))}
           </>
