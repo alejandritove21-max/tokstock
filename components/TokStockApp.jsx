@@ -171,13 +171,7 @@ export default function App() {
      if (savedTheme !== null) setDark(savedTheme);
      const savedTemplate = await db.getSetting("whatsappTemplate");
      if (savedTemplate) setWhatsappTemplate(savedTemplate);
-     // Load screenshots in background (batched, won't timeout)
-     try {
-      const imgs = await db.getScreenshots();
-      if (Object.keys(imgs).length > 0) {
-       setAccounts(prev => prev.map(a => imgs[a.id] ? { ...a, screenshot: imgs[a.id] } : a));
-      }
-     } catch (e) { console.warn("Screenshots load skipped:", e); }
+     // Screenshots load individually when user taps an account (on-demand)
     }
    } catch (e) {
     console.error("Load error:", e);
@@ -582,6 +576,38 @@ function Card({ t, children, style = {}, onClick }) {
  );
 }
 
+// ─── LAZY THUMBNAIL (loads screenshot on demand) ───
+function LazyThumb({ id, screenshot, size = 42, radius = 10, t }) {
+ const [img, setImg] = useState(screenshot || "");
+ const [tried, setTried] = useState(false);
+ const ref = useRef(null);
+
+ useEffect(() => {
+  if (img || tried) return;
+  const observer = new IntersectionObserver(async ([entry]) => {
+   if (entry.isIntersecting && !img && !tried) {
+    setTried(true);
+    try {
+     const loaded = await db.getScreenshot(id);
+     if (loaded) setImg(loaded);
+    } catch {}
+    observer.disconnect();
+   }
+  }, { threshold: 0.1 });
+  if (ref.current) observer.observe(ref.current);
+  return () => observer.disconnect();
+ }, [id, img, tried]);
+
+ useEffect(() => { if (screenshot && !img) setImg(screenshot); }, [screenshot]);
+
+ return (
+  <div ref={ref} style={{
+   width: size, height: size, borderRadius: radius, flexShrink: 0,
+   background: img ? `url(${img}) center/cover` : t.bgInput,
+  }} />
+ );
+}
+
 // ─── ACCOUNT CARD IN LIST ───
 function AccountListItem({ account, t, onSelect }) {
  const a = account;
@@ -598,10 +624,7 @@ function AccountListItem({ account, t, onSelect }) {
     cursor: "pointer", height: 62, overflow: "hidden",
    }}
   >
-   <div style={{
-    width: 42, height: 42, borderRadius: 10,
-    background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
-   }} />
+   <LazyThumb id={a.id} screenshot={a.screenshot} t={t} />
    <div style={{ overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
      <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 1 }}>@{a.username || "—"}</span>
@@ -708,7 +731,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v26</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v27</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
