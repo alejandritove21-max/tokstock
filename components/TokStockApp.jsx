@@ -192,6 +192,20 @@ export default function App() {
   setTimeout(() => setNotification(null), 2500);
  };
 
+ // Select account and load its screenshot on demand if missing
+ const selectAccount = async (acc) => {
+  setSelectedAccount(acc);
+  if (acc && !acc.screenshot) {
+   try {
+    const img = await db.getScreenshot(acc.id);
+    if (img) {
+     setSelectedAccount(prev => prev?.id === acc.id ? { ...prev, screenshot: img } : prev);
+     setAccounts(prev => prev.map(a => a.id === acc.id ? { ...a, screenshot: img } : a));
+    }
+   } catch {}
+  }
+ };
+
  const addAccount = async (acc) => {
   setSyncing(true);
   try {
@@ -379,11 +393,11 @@ export default function App() {
     />
    ) : (
     <>
-     {tab === "home" && <HomeScreen accounts={accounts} t={t} dark={dark} onSelect={setSelectedAccount} />}
+     {tab === "home" && <HomeScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} />}
      {tab === "stock" && (
       <StockScreen accounts={accounts} t={t} dark={dark}
        countries={countries}
-       onSelect={setSelectedAccount}
+       onSelect={selectAccount}
        onAdd={() => { setEditingAccount(null); setShowForm(true); }}
        onBulkSell={async (ids, totalPrice) => {
         setSyncing(true);
@@ -415,7 +429,7 @@ export default function App() {
       />
      )}
      {tab === "reports" && <ReportsScreen accounts={accounts} t={t} dark={dark} />}
-     {tab === "search" && <SearchScreen accounts={accounts} t={t} dark={dark} onSelect={setSelectedAccount} />}
+     {tab === "search" && <SearchScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} />}
      {tab === "config" && (
       <ConfigScreen
        t={t} dark={dark} toggleTheme={toggleTheme}
@@ -694,7 +708,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v25</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v26</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -1911,7 +1925,25 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
   const file = e.target.files?.[0];
   if (file) {
    const reader = new FileReader();
-   reader.onload = (ev) => upd("screenshot", ev.target.result);
+   reader.onload = (ev) => {
+    // Compress image to reduce DB size
+    const img = new Image();
+    img.onload = () => {
+     const canvas = document.createElement("canvas");
+     const MAX = 600;
+     let w = img.width, h = img.height;
+     if (w > MAX || h > MAX) {
+      if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+      else { w = Math.round(w * MAX / h); h = MAX; }
+     }
+     canvas.width = w;
+     canvas.height = h;
+     canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+     const compressed = canvas.toDataURL("image/jpeg", 0.6);
+     upd("screenshot", compressed);
+    };
+    img.src = ev.target.result;
+   };
    reader.readAsDataURL(file);
   }
  };
