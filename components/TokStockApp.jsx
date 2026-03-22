@@ -535,41 +535,83 @@ export default function App() {
       <button
        onClick={async () => {
         const avail = accounts.filter(a => a.status === "available" && a.screenshot);
-        const availNoImg = accounts.filter(a => a.status === "available" && !a.screenshot);
-        if (avail.length === 0 && availNoImg.length === 0) { notify("No hay cuentas disponibles", "error"); return; }
+        if (avail.length === 0) { notify("No hay cuentas disponibles con imagen", "error"); return; }
 
-        const allAvail = [...avail, ...availNoImg];
-        let shared = 0;
+        notify("Preparando imágenes...");
 
-        for (const a of allAvail) {
-         const flag = countries.find(c => c.name === a.country)?.emoji || "";
-         const cats = (a.categories || []).join(", ");
-         const text = `*@${a.username}*\n${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}${cats ? `\n${cats}` : ""}\nPrecio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}\n${a.profileLink || ""}`;
+        // Stamp text on each image using canvas
+        const files = [];
+        for (const a of avail) {
+         try {
+          const flag = countries.find(c => c.name === a.country)?.emoji || "";
+          const cats = (a.categories || []).join(", ");
+          const lines = [
+           `@${a.username}`,
+           `${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}`,
+           cats || "",
+           `Precio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}`,
+          ].filter(Boolean);
 
-         if (a.screenshot && navigator.share && navigator.canShare) {
-          try {
-           const res = await fetch(a.screenshot);
-           const blob = await res.blob();
-           const file = new File([blob], `${a.username}.jpg`, { type: "image/jpeg" });
-           if (navigator.canShare({ files: [file], text })) {
-            await navigator.share({ files: [file], text, title: `@${a.username}` });
-            shared++;
-            continue;
-           }
-          } catch (e) {
-           if (e.name === "AbortError") {
-            notify(`${shared} de ${allAvail.length} compartidas`);
-            return;
-           }
-          }
-         }
+          // Load image
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+           img.onload = resolve;
+           img.onerror = reject;
+           img.src = a.screenshot;
+          });
 
-         // Fallback for accounts without image: copy text
-         try { await navigator.clipboard.writeText(text); } catch {}
-         shared++;
+          const canvas = document.createElement("canvas");
+          const W = Math.max(img.width, 600);
+          const barH = 18 + lines.length * 22;
+          canvas.width = W;
+          canvas.height = img.height + barH;
+          const ctx = canvas.getContext("2d");
+
+          // Draw image
+          ctx.drawImage(img, 0, 0, W, img.height);
+
+          // Draw text bar at bottom
+          ctx.fillStyle = "rgba(0,0,0,.85)";
+          ctx.fillRect(0, img.height, W, barH);
+
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 16px -apple-system, sans-serif";
+          lines.forEach((line, i) => {
+           if (i === 0) ctx.font = "bold 18px -apple-system, sans-serif";
+           else if (i === 3) { ctx.fillStyle = "#4cd964"; ctx.font = "bold 16px -apple-system, sans-serif"; }
+           else { ctx.fillStyle = "#ccc"; ctx.font = "14px -apple-system, sans-serif"; }
+           ctx.fillText(line, 12, img.height + 20 + i * 22);
+          });
+
+          const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
+          files.push(new File([blob], `${a.username}.jpg`, { type: "image/jpeg" }));
+         } catch (e) { console.warn("Skip", a.username, e); }
         }
 
-        notify(`${shared} cuentas compartidas`);
+        if (files.length === 0) { notify("No se pudieron preparar las imágenes", "error"); return; }
+
+        // Also build full text for clipboard
+        const fullText = avail.map(a => {
+         const flag = countries.find(c => c.name === a.country)?.emoji || "";
+         const cats = (a.categories || []).join(", ");
+         return `*@${a.username}*\n${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}${cats ? `\n${cats}` : ""}\nPrecio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}\n${a.profileLink || ""}`;
+        }).join("\n\n───────────\n\n");
+
+        // Copy text to clipboard
+        try { await navigator.clipboard.writeText(fullText); } catch {}
+
+        // Share all images at once
+        if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+         try {
+          await navigator.share({ files, title: `${files.length} cuentas disponibles` });
+          notify(`${files.length} cuentas compartidas`);
+          return;
+         } catch (e) { if (e.name === "AbortError") return; }
+        }
+
+        // Fallback
+        window.open(`https://wa.me/?text=${encodeURIComponent(fullText)}`, "_blank");
+        notify("Texto copiado · Imágenes no compatibles en este dispositivo");
        }}
        style={{
         position: "fixed", bottom: 20, right: 76,
@@ -770,7 +812,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v34</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v35</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
