@@ -316,15 +316,17 @@ export default function App() {
    <div style={{
     height: "100vh", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    background: "#111111",
+    background: "#0d0d0f",
     fontFamily: "'SF Pro Display', -apple-system, sans-serif",
    }}>
+    <img src="/tiktok.png" alt="" style={{ width: 52, height: 52, marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
     <div style={{
      width: 32, height: 3,
-     background: "linear-gradient(90deg, #4a9eff, #2680eb)",
+     background: "linear-gradient(90deg, #25F4EE, #FE2C55)",
      borderRadius: 2, animation: "loading 1.2s ease-in-out infinite",
     }} />
     <style>{`
+     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
      @keyframes loading { 0%,100% { width: 32px; opacity: .3; } 50% { width: 56px; opacity: 1; } }
     `}</style>
    </div>
@@ -549,7 +551,7 @@ export default function App() {
        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.06)"}
        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
-       <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+       <img src="/whatsapp.png" alt="" style={{ width: 22, height: 22 }} />
       </button>
      )}
     </>
@@ -625,8 +627,11 @@ function AccountListItem({ account, t, onSelect }) {
      background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
     }} />
     <div style={{ flex: 1, minWidth: 0 }}>
-     <div style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-      @{a.username || "—"}
+     <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}>
+      <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+       @{a.username || "—"}
+      </span>
+      <img src="/verified.png" alt="" style={{ width: 14, height: 14, flexShrink: 0 }} />
      </div>
     </div>
     <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -1446,7 +1451,11 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
      color: t.text,
     }}>{Icons.back}</button>
     <div style={{ flex: 1 }}>
-     <div style={{ fontSize: 18, fontWeight: 800 }}>@{a.username}</div>
+     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <img src="/tiktok.png" alt="" style={{ width: 18, height: 18 }} />
+      <span style={{ fontSize: 18, fontWeight: 800 }}>@{a.username}</span>
+      <img src="/verified.png" alt="" style={{ width: 16, height: 16 }} />
+     </div>
      <StatusBadge status={a.status} t={t} />
     </div>
    </div>
@@ -1554,8 +1563,9 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
 
    {/* Public Data */}
    <Card t={t} style={{ marginBottom: 12 }}>
-    <div style={{ fontSize: 12, fontWeight: 700, color: t.accent, marginBottom: 10, letterSpacing: 1 }}>
-     DATOS PÚBLICOS
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+     <img src="/tik-tok.png" alt="" style={{ width: 16, height: 16 }} />
+     <span style={{ fontSize: 12, fontWeight: 700, color: t.accent, letterSpacing: 1 }}>DATOS PÚBLICOS</span>
     </div>
     {[
      ["Perfil", a.profileName],
@@ -1616,8 +1626,9 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
    {/* Credentials */}
    <Card t={t} style={{ marginBottom: 12 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-     <div style={{ fontSize: 12, fontWeight: 700, color: t.yellow, letterSpacing: 1 }}>
-      CREDENCIALES
+     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <img src="/gmail.png" alt="" style={{ width: 16, height: 16 }} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: t.yellow, letterSpacing: 1 }}>CREDENCIALES</span>
      </div>
      <button
       onClick={() => setShowCreds(!showCreds)}
@@ -1704,7 +1715,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
      }}
     >
-     <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+     <img src="/whatsapp.png" alt="" style={{ width: 18, height: 18 }} />
      Enviar por WhatsApp
     </button>
     {a.status === "sold" && (
@@ -2912,7 +2923,7 @@ function BroadcastScreen({ accounts, t, dark, countries, onBack }) {
        {done ? (
         <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>✓</span>
        ) : (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+        <img src="/whatsapp.png" alt="" style={{ width: 20, height: 20 }} />
        )}
       </button>
      </div>
