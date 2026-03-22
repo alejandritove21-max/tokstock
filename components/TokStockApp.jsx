@@ -108,25 +108,28 @@ const Icons = {
 
 // ─── STYLES ───
 const getTheme = (dark) => ({
- bg: dark ? "#0d0d0f" : "#f5f5f7",
- bgCard: dark ? "#18181b" : "#ffffff",
- bgCardAlt: dark ? "#1f1f23" : "#f9f9fb",
- bgInput: dark ? "#1f1f23" : "#efefef",
- text: dark ? "#eee" : "#1a1a1a",
- textSec: dark ? "#777" : "#666",
- textTer: dark ? "#444" : "#aaa",
- accent: dark ? "#3b82f6" : "#2563eb",
- accentSoft: dark ? "#3b82f615" : "#2563eb0a",
- green: dark ? "#22c55e" : "#16a34a",
- greenSoft: dark ? "#22c55e12" : "#16a34a0a",
- red: dark ? "#ef4444" : "#dc2626",
- redSoft: dark ? "#ef444412" : "#dc26260a",
- yellow: dark ? "#eab308" : "#ca8a04",
- yellowSoft: dark ? "#eab30812" : "#ca8a040a",
- blue: dark ? "#3b82f6" : "#2563eb",
- blueSoft: dark ? "#3b82f612" : "#2563eb0a",
- border: dark ? "#252528" : "#e5e5e5",
- borderLight: dark ? "#1c1c1f" : "#f0f0f0",
+ bg: dark ? "#0a0a0f" : "#f5f5f7",
+ bgCard: dark ? "#131318" : "#ffffff",
+ bgCardAlt: dark ? "#1a1a22" : "#f9f9fb",
+ bgInput: dark ? "#1a1a22" : "#efefef",
+ bgNav: dark ? "rgba(19,19,24,.82)" : "rgba(255,255,255,.82)",
+ text: dark ? "#f0f0f0" : "#1a1a1a",
+ textSec: dark ? "#6b6b80" : "#666",
+ textTer: dark ? "#3e3e50" : "#aaa",
+ accent: dark ? "#4ade80" : "#16a34a",
+ accentSoft: dark ? "#4ade8015" : "#16a34a0a",
+ green: dark ? "#4ade80" : "#16a34a",
+ greenSoft: dark ? "#4ade8012" : "#16a34a0a",
+ red: dark ? "#f87171" : "#dc2626",
+ redSoft: dark ? "#f8717112" : "#dc26260a",
+ yellow: dark ? "#facc15" : "#ca8a04",
+ yellowSoft: dark ? "#facc1512" : "#ca8a040a",
+ blue: dark ? "#60a5fa" : "#2563eb",
+ blueSoft: dark ? "#60a5fa12" : "#2563eb0a",
+ purple: dark ? "#a78bfa" : "#7c3aed",
+ purpleSoft: dark ? "#a78bfa12" : "#7c3aed0a",
+ border: dark ? "#1e1e28" : "#e5e5e5",
+ borderLight: dark ? "#16161e" : "#f0f0f0",
  shadow: dark ? "0 1px 4px rgba(0,0,0,.5)" : "0 1px 3px rgba(0,0,0,.05)",
  shadowLg: dark ? "0 8px 24px rgba(0,0,0,.6)" : "0 4px 16px rgba(0,0,0,.08)",
 });
@@ -147,7 +150,7 @@ export default function App() {
  const [editingAccount, setEditingAccount] = useState(null);
  const [notification, setNotification] = useState(null);
  const [whatsappTemplate, setWhatsappTemplate] = useState("");
- const [menuOpen, setMenuOpen] = useState(false);
+ const [menuOpen, setMenuOpen] = useState(false); // kept for compat
  const [goals, setGoals] = useState([]);
  const [emailWarehouse, setEmailWarehouse] = useState([]);
 
@@ -319,18 +322,19 @@ export default function App() {
    <div style={{
     height: "100vh", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    background: "#0d0d0f",
-    fontFamily: "'SF Pro Display', -apple-system, sans-serif",
+    background: "#0a0a0f",
+    fontFamily: "Inter, -apple-system, sans-serif",
    }}>
-    <img src="/tiktok.png" alt="" style={{ width: 52, height: 52, marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
+    <img src="/tiktok.png" alt="" style={{ width: 48, height: 48, marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
     <div style={{
-     width: 32, height: 3,
-     background: "linear-gradient(90deg, #25F4EE, #FE2C55)",
+     width: 40, height: 3,
+     background: "linear-gradient(90deg, #4ade80, #22d3ee)",
      borderRadius: 2, animation: "loading 1.2s ease-in-out infinite",
     }} />
     <style>{`
-     @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+     @keyframes pulse { 0%,100% { transform: scale(1); opacity:.8; } 50% { transform: scale(1.08); opacity:1; } }
      @keyframes loading { 0%,100% { width: 32px; opacity: .3; } 50% { width: 56px; opacity: 1; } }
+     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     `}</style>
    </div>
   );
@@ -340,8 +344,8 @@ export default function App() {
   maxWidth: 440, margin: "0 auto", minHeight: "100vh",
   minHeight: "100dvh",
   background: t.bg, color: t.text, position: "relative",
-  fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
-  paddingBottom: "calc(70px + env(safe-area-inset-bottom, 0px))",
+  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+  paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
   paddingTop: "env(safe-area-inset-top, 0px)",
   overflow: "hidden",
  };
@@ -456,118 +460,87 @@ export default function App() {
       />
      )}
 
-     {/* Menu Toggle */}
-     <button
-      onClick={() => setMenuOpen(!menuOpen)}
-      style={{
-       position: "fixed", bottom: 20, left: 20,
-       marginBottom: "env(safe-area-inset-bottom, 0px)",
-       width: 46, height: 46, borderRadius: 14,
-       border: `1px solid ${t.border}`,
-       background: t.bgCard, cursor: "pointer", zIndex: 110,
-       display: "flex", alignItems: "center", justifyContent: "center",
-       boxShadow: t.shadowLg,
-      }}
-     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 3.5 }}>
-       <div style={{ width: 18, height: 1.5, borderRadius: 1, background: menuOpen ? t.accent : t.textSec, transition: "all .2s", transform: menuOpen ? "rotate(45deg) translate(3.5px, 3.5px)" : "none" }} />
-       <div style={{ width: 18, height: 1.5, borderRadius: 1, background: t.textSec, transition: "all .2s", opacity: menuOpen ? 0 : 1 }} />
-       <div style={{ width: 18, height: 1.5, borderRadius: 1, background: menuOpen ? t.accent : t.textSec, transition: "all .2s", transform: menuOpen ? "rotate(-45deg) translate(3.5px, -3.5px)" : "none" }} />
-      </div>
-     </button>
-
-     {/* Menu Panel */}
-     {menuOpen && (
-      <>
-       <div onClick={() => setMenuOpen(false)} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 108,
-       }} />
-       <div style={{
-        position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-        maxWidth: 440, width: "100%", zIndex: 109,
-        background: t.bgCard,
-        borderRadius: "20px 20px 0 0",
-        padding: "0 20px calc(80px + env(safe-area-inset-bottom, 8px))",
-        boxShadow: t.shadowLg,
-        animation: "slideUp .2s ease",
-       }}>
-        <div style={{ width: 32, height: 4, borderRadius: 2, background: t.border, margin: "10px auto 16px" }} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-         {[
-          { id: "home", label: "Inicio", icon: "🏠" },
-          { id: "stock", label: "Stock", icon: "📦" },
-          { id: "reports", label: "Reportes", icon: "📊" },
-          { id: "search", label: "Buscar", icon: "🔍" },
-          { id: "goals", label: "Metas", icon: "🎯" },
-          { id: "warehouse", label: "Bodega", icon: "📧" },
-          { id: "config", label: "Ajustes", icon: "⚙️" },
-         ].map((item) => {
-          const active = tab === item.id;
-          return (
-          <button
-           key={item.id}
-           onClick={() => { setTab(item.id); setMenuOpen(false); }}
-           style={{
-            padding: "14px 8px", borderRadius: 14,
-            border: active ? `1.5px solid ${t.accent}` : `1px solid ${t.border}`,
-            cursor: "pointer",
-            background: active ? t.accentSoft : t.bgCardAlt,
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-           }}
-          >
-           <span style={{ fontSize: 20 }}>{item.icon}</span>
-           <span style={{ fontSize: 11, fontWeight: 600, color: active ? t.accent : t.textSec }}>{item.label}</span>
+     {/* ─── BOTTOM NAV BAR (v0 style) ─── */}
+     <nav style={{
+      position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
+      maxWidth: 440, width: "100%", zIndex: 110,
+      borderTop: `1px solid ${t.border}`,
+      background: t.bgNav,
+      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
+     }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", padding: "6px 4px" }}>
+       {[
+        { id: "home", icon: Icons.home, label: "Inicio" },
+        { id: "stock", icon: Icons.box, label: "Stock" },
+        { id: "add", icon: Icons.plus, label: "Añadir", isAction: true },
+        { id: "reports", icon: Icons.chart, label: "Reportes" },
+        { id: "config", icon: Icons.settings, label: "Ajustes" },
+       ].map((item) => {
+        if (item.isAction) {
+         return (
+          <button key="add" onClick={() => { setEditingAccount(null); setShowForm(true); }} style={{
+           width: 48, height: 48, borderRadius: 16,
+           background: t.accent, border: "none", cursor: "pointer",
+           display: "flex", alignItems: "center", justifyContent: "center",
+           boxShadow: `0 4px 16px ${t.accent}30`,
+           color: dark ? "#0a0a0f" : "#fff",
+           transition: "transform .15s",
+          }}>
+           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
-          );
-         })}
-        </div>
+         );
+        }
+        const active = tab === item.id;
+        return (
+         <button key={item.id} onClick={() => setTab(item.id)} style={{
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+          padding: "6px 12px", background: "none", border: "none", cursor: "pointer",
+          color: active ? t.accent : t.textSec, transition: "color .2s",
+         }}>
+          <span style={{ opacity: active ? 1 : 0.6 }}>{item.icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 500 }}>{item.label}</span>
+         </button>
+        );
+       })}
+      </div>
+
+      {/* Quick access row */}
+      {tab === "home" && (
+       <div style={{
+        display: "flex", justifyContent: "center", gap: 6, padding: "0 16px 6px",
+       }}>
+        <button onClick={() => setTab("broadcast")} style={{
+         display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+         borderRadius: 20, background: "#25D36615", border: `1px solid #25D36630`,
+         cursor: "pointer", fontSize: 10, fontWeight: 600, color: "#25D366",
+        }}>
+         <img src="/whatsapp.png" alt="" style={{ width: 12, height: 12 }} /> Difusión
+        </button>
+        <button onClick={() => setTab("search")} style={{
+         display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+         borderRadius: 20, background: t.bgCardAlt, border: `1px solid ${t.border}`,
+         cursor: "pointer", fontSize: 10, fontWeight: 600, color: t.textSec,
+        }}>
+         {Icons.search} Buscar
+        </button>
+        <button onClick={() => setTab("goals")} style={{
+         display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+         borderRadius: 20, background: t.bgCardAlt, border: `1px solid ${t.border}`,
+         cursor: "pointer", fontSize: 10, fontWeight: 600, color: t.textSec,
+        }}>
+         🎯 Metas
+        </button>
+        <button onClick={() => setTab("warehouse")} style={{
+         display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+         borderRadius: 20, background: t.bgCardAlt, border: `1px solid ${t.border}`,
+         cursor: "pointer", fontSize: 10, fontWeight: 600, color: t.textSec,
+        }}>
+         📧 Bodega
+        </button>
        </div>
-      </>
-     )}
-
-     {/* FAB Add button */}
-     {(tab === "home" || tab === "stock") && (
-      <button
-       onClick={() => { setEditingAccount(null); setShowForm(true); }}
-       style={{
-        position: "fixed", bottom: 20, right: 20,
-        marginBottom: "env(safe-area-inset-bottom, 0px)",
-        width: 46, height: 46, borderRadius: 14,
-        background: t.accent, border: "none",
-        cursor: "pointer", zIndex: 101,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: `0 4px 16px ${t.accent}40`,
-        transition: "transform .15s",
-        color: "#fff", fontSize: 22, fontWeight: 300,
-       }}
-       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.06)"}
-       onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-      >
-       +
-      </button>
-     )}
-
-     {/* Broadcast button - Home only */}
-     {/* Broadcast button - Home only */}
-     {tab === "home" && (
-      <button
-       onClick={() => setTab("broadcast")}
-       style={{
-        position: "fixed", bottom: 20, right: 76,
-        marginBottom: "env(safe-area-inset-bottom, 0px)",
-        width: 46, height: 46, borderRadius: 14,
-        background: "#25D366", border: "none",
-        cursor: "pointer", zIndex: 101,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 4px 16px rgba(37,211,102,.4)",
-        transition: "transform .15s",
-       }}
-       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.06)"}
-       onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-      >
-       <img src="/whatsapp.png" alt="" style={{ width: 22, height: 22 }} />
-      </button>
-     )}
+      )}
+     </nav>
     </>
    )}
 
@@ -587,18 +560,18 @@ export default function App() {
 // ─── STATUS BADGE ───
 function StatusBadge({ status, t }) {
  const config = {
-  available: { label: "Disponible", bg: "#22c55e18", color: "#22c55e", border: "#22c55e30" },
-  sold: { label: "Vendida", bg: "#3b82f618", color: "#3b82f6", border: "#3b82f630" },
-  disqualified: { label: "Desc.", bg: "#ef444418", color: "#ef4444", border: "#ef444430" },
+  available: { label: "Disponible", bg: "#4ade8015", color: "#4ade80", border: "#4ade8025" },
+  sold: { label: "Vendida", bg: "#facc1515", color: "#facc15", border: "#facc1525" },
+  disqualified: { label: "Desc.", bg: "#f8717115", color: "#f87171", border: "#f8717125" },
  };
  const c = config[status] || config.available;
  return (
   <span style={{
    display: "inline-flex", alignItems: "center", justifyContent: "center",
-   fontSize: 9, fontWeight: 700, letterSpacing: 0.3,
+   fontSize: 10, fontWeight: 600, letterSpacing: 0.2,
    padding: "3px 8px", borderRadius: 6,
    background: c.bg, color: c.color, border: `1px solid ${c.border}`,
-   whiteSpace: "nowrap", flexShrink: 0, minWidth: 58, textAlign: "center",
+   whiteSpace: "nowrap", flexShrink: 0, minWidth: 60, textAlign: "center",
   }}>
    {c.label}
   </span>
@@ -611,7 +584,7 @@ function Card({ t, children, style = {}, onClick }) {
   <div
    onClick={onClick}
    style={{
-    background: t.bgCard, borderRadius: 14, padding: 14,
+    background: t.bgCard, borderRadius: 16, padding: 16,
     border: `1px solid ${t.border}`, cursor: onClick ? "pointer" : "default",
     transition: "all .2s", ...style,
    }}
@@ -630,35 +603,34 @@ function AccountListItem({ account, t, onSelect }) {
   <div
    onClick={() => onSelect(a)}
    style={{
-    display: "grid", gridTemplateColumns: "38px 1fr auto",
-    gap: 10, alignItems: "center",
-    padding: "10px 12px", marginBottom: 6, borderRadius: 12,
+    display: "flex", alignItems: "center", gap: 12,
+    padding: "12px 14px", marginBottom: 8, borderRadius: 14,
     background: t.bgCard, border: `1px solid ${t.border}`,
-    cursor: "pointer",
+    cursor: "pointer", transition: "all .15s",
    }}
   >
    {/* Avatar */}
    <div style={{
-    width: 38, height: 38, borderRadius: 10,
+    width: 44, height: 44, borderRadius: 12, flexShrink: 0,
     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
    }} />
    {/* Info */}
-   <div style={{ minWidth: 0 }}>
+   <div style={{ flex: 1, minWidth: 0 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-     <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{a.username || "—"}</span>
-     <img src="/verified.png" alt="" style={{ width: 13, height: 13, flexShrink: 0 }} />
+     <span style={{ fontWeight: 600, fontSize: 13.5, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{a.username || "—"}</span>
+     <img src="/verified.png" alt="" style={{ width: 14, height: 14, flexShrink: 0 }} />
     </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
      <StatusBadge status={a.status} t={t} />
-     <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap" }}>{fmtK(a.followers)}</span>
-     <span style={{ fontSize: 10, color: t.textTer }}>·</span>
-     <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
+     <span style={{ fontSize: 11, color: t.textSec, whiteSpace: "nowrap" }}>{fmtK(a.followers)}</span>
+     <span style={{ fontSize: 11, color: t.textTer }}>·</span>
+     <span style={{ fontSize: 11, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
     </div>
    </div>
    {/* Price */}
    <div style={{ textAlign: "right", flexShrink: 0 }}>
-    <div style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{fmt(price)}</div>
-    {cat && <div style={{ fontSize: 9, color: t.accent, marginTop: 1, whiteSpace: "nowrap" }}>{cat}</div>}
+    <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{fmt(price)}</div>
+    {cat && <div style={{ fontSize: 10, color: t.textSec, marginTop: 2, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.5 }}>{cat}</div>}
    </div>
   </div>
  );
@@ -750,7 +722,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v40</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v41</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
