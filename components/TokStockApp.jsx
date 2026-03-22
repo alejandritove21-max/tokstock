@@ -149,6 +149,7 @@ export default function App() {
  const [whatsappTemplate, setWhatsappTemplate] = useState("");
  const [menuOpen, setMenuOpen] = useState(false);
  const [goals, setGoals] = useState([]);
+ const [emailWarehouse, setEmailWarehouse] = useState([]);
 
  const t = getTheme(dark);
 
@@ -174,6 +175,8 @@ export default function App() {
      if (savedTemplate) setWhatsappTemplate(savedTemplate);
      const savedGoals = await db.getSetting("goals");
      if (savedGoals) setGoals(savedGoals);
+     const savedEmails = await db.getSetting("emailWarehouse");
+     if (savedEmails) setEmailWarehouse(savedEmails);
      // Screenshots for available accounts load with the data
      // Sold accounts load screenshot on demand when tapped
     }
@@ -384,9 +387,18 @@ export default function App() {
     <AccountForm
      t={t} dark={dark} countries={countries} categories={categories}
      aiProviders={aiProviders} account={editingAccount} accounts={accounts}
-     onSave={(acc) => {
+     emailWarehouse={emailWarehouse}
+     onSave={async (acc) => {
       if (editingAccount) { updateAccount({ ...editingAccount, ...acc }); }
-      else { addAccount(acc); }
+      else {
+       addAccount(acc);
+       // Mark email as used in warehouse
+       if (acc.email) {
+        const updated = emailWarehouse.map(e => e.email.toLowerCase() === acc.email.toLowerCase() ? { ...e, used: true, usedBy: acc.username } : e);
+        setEmailWarehouse(updated);
+        await db.setSetting("emailWarehouse", updated);
+       }
+      }
       setShowForm(false); setEditingAccount(null);
      }}
      onCancel={() => { setShowForm(false); setEditingAccount(null); }}
@@ -431,6 +443,7 @@ export default function App() {
      {tab === "reports" && <ReportsScreen accounts={accounts} t={t} dark={dark} />}
      {tab === "search" && <SearchScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} />}
      {tab === "goals" && <GoalsScreen accounts={accounts} t={t} dark={dark} goals={goals} saveGoals={async (g) => { setGoals(g); await db.setSetting("goals", g); }} />}
+     {tab === "warehouse" && <WarehouseScreen t={t} dark={dark} emailWarehouse={emailWarehouse} saveWarehouse={async (w) => { setEmailWarehouse(w); await db.setSetting("emailWarehouse", w); }} />}
      {tab === "broadcast" && <BroadcastScreen accounts={accounts} t={t} dark={dark} countries={countries} onBack={() => setTab("home")} />}
      {tab === "config" && (
       <ConfigScreen
@@ -486,6 +499,7 @@ export default function App() {
           { id: "reports", label: "Reportes", icon: "📊" },
           { id: "search", label: "Buscar", icon: "🔍" },
           { id: "goals", label: "Metas", icon: "🎯" },
+          { id: "warehouse", label: "Bodega", icon: "📧" },
           { id: "config", label: "Ajustes", icon: "⚙️" },
          ].map((item) => {
           const active = tab === item.id;
@@ -573,18 +587,19 @@ export default function App() {
 // ─── STATUS BADGE ───
 function StatusBadge({ status, t }) {
  const config = {
-  available: { label: "Disponible", color: t.green, dot: t.green },
-  sold: { label: "Vendida", color: t.blue, dot: t.blue },
-  disqualified: { label: "Desc.", color: t.red, dot: t.red },
+  available: { label: "Disponible", bg: "#22c55e18", color: "#22c55e", border: "#22c55e30" },
+  sold: { label: "Vendida", bg: "#3b82f618", color: "#3b82f6", border: "#3b82f630" },
+  disqualified: { label: "Desc.", bg: "#ef444418", color: "#ef4444", border: "#ef444430" },
  };
  const c = config[status] || config.available;
  return (
   <span style={{
-   display: "inline-flex", alignItems: "center", gap: 4,
-   fontSize: 9, fontWeight: 600, color: c.color,
-   whiteSpace: "nowrap", flexShrink: 0,
+   display: "inline-flex", alignItems: "center", justifyContent: "center",
+   fontSize: 9, fontWeight: 700, letterSpacing: 0.3,
+   padding: "3px 8px", borderRadius: 6,
+   background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+   whiteSpace: "nowrap", flexShrink: 0, minWidth: 58, textAlign: "center",
   }}>
-   <span style={{ width: 5, height: 5, borderRadius: 3, background: c.dot }} />
    {c.label}
   </span>
  );
@@ -615,40 +630,35 @@ function AccountListItem({ account, t, onSelect }) {
   <div
    onClick={() => onSelect(a)}
    style={{
+    display: "grid", gridTemplateColumns: "38px 1fr auto",
+    gap: 10, alignItems: "center",
     padding: "10px 12px", marginBottom: 6, borderRadius: 12,
     background: t.bgCard, border: `1px solid ${t.border}`,
-    cursor: "pointer", overflow: "hidden",
+    cursor: "pointer",
    }}
   >
-   {/* Row 1: Avatar + Username + Price */}
-   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-    <div style={{
-     width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
-    }} />
-    <div style={{ flex: 1, minWidth: 0 }}>
-     <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}>
-      <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-       @{a.username || "—"}
-      </span>
-      <img src="/verified.png" alt="" style={{ width: 14, height: 14, flexShrink: 0 }} />
-     </div>
+   {/* Avatar */}
+   <div style={{
+    width: 38, height: 38, borderRadius: 10,
+    background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
+   }} />
+   {/* Info */}
+   <div style={{ minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+     <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{a.username || "—"}</span>
+     <img src="/verified.png" alt="" style={{ width: 13, height: 13, flexShrink: 0 }} />
     </div>
-    <div style={{ textAlign: "right", flexShrink: 0 }}>
-     <div style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{fmt(price)}</div>
+    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+     <StatusBadge status={a.status} t={t} />
+     <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap" }}>{fmtK(a.followers)}</span>
+     <span style={{ fontSize: 10, color: t.textTer }}>·</span>
+     <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
     </div>
    </div>
-   {/* Row 2: Tags */}
-   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "nowrap", overflow: "hidden" }}>
-    <StatusBadge status={a.status} t={t} />
-    <span style={{ width: 1, height: 10, background: t.border, flexShrink: 0 }} />
-    <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap" }}>{fmtK(a.followers)}</span>
-    <span style={{ width: 1, height: 10, background: t.border, flexShrink: 0 }} />
-    <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
-    {cat && <>
-     <span style={{ width: 1, height: 10, background: t.border, flexShrink: 0 }} />
-     <span style={{ fontSize: 10, color: t.accent, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat}</span>
-    </>}
+   {/* Price */}
+   <div style={{ textAlign: "right", flexShrink: 0 }}>
+    <div style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{fmt(price)}</div>
+    {cat && <div style={{ fontSize: 9, color: t.accent, marginTop: 1, whiteSpace: "nowrap" }}>{cat}</div>}
    </div>
   </div>
  );
@@ -740,7 +750,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v38</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v39</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -1922,7 +1932,7 @@ function AccountDetail({ account, t, dark, onBack, onSell, onDisqualify, onResto
 }
 
 // ─── ACCOUNT FORM (3 Steps) ───
-function AccountForm({ t, dark, countries, categories, aiProviders, account, onSave, onCancel, accounts }) {
+function AccountForm({ t, dark, countries, categories, aiProviders, account, onSave, onCancel, accounts, emailWarehouse }) {
  const [step, setStep] = useState(1);
  const [analyzing, setAnalyzing] = useState(false);
  const [aiError, setAiError] = useState("");
@@ -2375,7 +2385,37 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Credenciales</div>
 
      <label style={labelStyle}>Email de la cuenta</label>
-     <input type="email" placeholder="email@ejemplo.com" value={form.email} onChange={(e) => { upd("email", e.target.value); checkDuplicate("email", e.target.value); }} style={inputStyle} />
+     <input type="email" placeholder="email@ejemplo.com" value={form.email} onChange={(e) => {
+      const val = e.target.value;
+      upd("email", val);
+      checkDuplicate("email", val);
+      // Auto-complete password from warehouse
+      if (emailWarehouse && val.length > 3) {
+       const match = emailWarehouse.find(w => w.email.toLowerCase() === val.toLowerCase());
+       if (match && match.password) {
+        upd("emailPassword", match.password);
+        upd("emailPasswordSame", false);
+       }
+      }
+     }} style={inputStyle} />
+     {/* Warehouse suggestions */}
+     {emailWarehouse && emailWarehouse.filter(w => !w.used).length > 0 && !form.email && (
+      <div style={{ marginBottom: 12 }}>
+       <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>📧 Correos disponibles en bodega:</div>
+       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {emailWarehouse.filter(w => !w.used).slice(0, 6).map((w, i) => (
+         <button key={i} onClick={() => {
+          upd("email", w.email);
+          if (w.password) { upd("emailPassword", w.password); upd("emailPasswordSame", false); }
+          checkDuplicate("email", w.email);
+         }} style={{
+          padding: "4px 8px", borderRadius: 8, border: `1px solid ${t.border}`,
+          background: t.bgCardAlt, cursor: "pointer", fontSize: 10, color: t.text,
+         }}>{w.email.split("@")[0]}@...</button>
+        ))}
+       </div>
+      </div>
+     )}
 
      <label style={labelStyle}>Contraseña de TikTok</label>
      <input type="text" placeholder="Contraseña" value={form.tiktokPassword} onChange={(e) => upd("tiktokPassword", e.target.value)} style={inputStyle} />
@@ -2832,6 +2872,97 @@ function GoalsScreen({ accounts, t, dark, goals, saveGoals }) {
      <div style={{ fontSize: 36, marginBottom: 8 }}>🎯</div>
      <div style={{ fontSize: 13, color: t.textSec }}>Crea tu primera meta</div>
      <div style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>La ganancia se cuenta desde el día que la crees</div>
+    </div>
+   )}
+  </div>
+ );
+}
+
+// ─── EMAIL WAREHOUSE ───
+function WarehouseScreen({ t, dark, emailWarehouse, saveWarehouse }) {
+ const [newEmail, setNewEmail] = useState("");
+ const [newPass, setNewPass] = useState("");
+ const [filter, setFilter] = useState("all");
+
+ const addEmail = () => {
+  if (!newEmail) return;
+  if (emailWarehouse.find(e => e.email.toLowerCase() === newEmail.toLowerCase())) { alert("Este correo ya está en la bodega"); return; }
+  saveWarehouse([...emailWarehouse, { email: newEmail, password: newPass, used: false, usedBy: "", addedDate: today() }]);
+  setNewEmail(""); setNewPass("");
+ };
+
+ const removeEmail = (email) => saveWarehouse(emailWarehouse.filter(e => e.email !== email));
+ const toggleUsed = (email) => saveWarehouse(emailWarehouse.map(e => e.email === email ? { ...e, used: !e.used, usedBy: e.used ? "" : e.usedBy } : e));
+
+ const filtered = filter === "all" ? emailWarehouse : filter === "available" ? emailWarehouse.filter(e => !e.used) : emailWarehouse.filter(e => e.used);
+ const availCount = emailWarehouse.filter(e => !e.used).length;
+ const usedCount = emailWarehouse.filter(e => e.used).length;
+
+ return (
+  <div style={{ padding: "8px 16px 0" }}>
+   <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Bodega de Correos</div>
+   <div style={{ fontSize: 11, color: t.textSec, marginBottom: 14 }}>{availCount} disponibles · {usedCount} usados · {emailWarehouse.length} total</div>
+
+   {/* Add new email */}
+   <Card t={t} style={{ marginBottom: 12, padding: 12 }}>
+    <input placeholder="correo@ejemplo.com" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 6, outline: "none" }} />
+    <input placeholder="Contraseña (opcional)" value={newPass} onChange={e => setNewPass(e.target.value)}
+     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 8, outline: "none" }} />
+    <button onClick={addEmail} disabled={!newEmail} style={{
+     width: "100%", padding: 10, borderRadius: 8, border: "none",
+     background: !newEmail ? t.bgInput : t.accent, color: !newEmail ? t.textTer : "#fff",
+     fontSize: 13, fontWeight: 700, cursor: "pointer",
+    }}>+ Agregar correo</button>
+   </Card>
+
+   {/* Filters */}
+   <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+    {[
+     { id: "all", label: `Todos (${emailWarehouse.length})` },
+     { id: "available", label: `Disponibles (${availCount})` },
+     { id: "used", label: `Usados (${usedCount})` },
+    ].map(f => (
+     <button key={f.id} onClick={() => setFilter(f.id)} style={{
+      padding: "5px 10px", borderRadius: 8, border: filter === f.id ? `1px solid ${t.accent}30` : `1px solid ${t.border}`,
+      background: filter === f.id ? t.accentSoft : "transparent",
+      cursor: "pointer", fontSize: 10, fontWeight: 600, color: filter === f.id ? t.accent : t.textSec,
+     }}>{f.label}</button>
+    ))}
+   </div>
+
+   {/* Email list */}
+   {filtered.map((e, i) => (
+    <div key={i} style={{
+     display: "flex", alignItems: "center", gap: 10,
+     padding: "10px 12px", marginBottom: 4, borderRadius: 10,
+     background: e.used ? t.bgCardAlt : t.bgCard,
+     border: `1px solid ${t.border}`,
+     opacity: e.used ? 0.6 : 1,
+    }}>
+     <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+       {e.email}
+      </div>
+      <div style={{ fontSize: 10, color: t.textSec, marginTop: 1 }}>
+       {e.password ? "••••••" : "Sin contraseña"}
+       {e.used && e.usedBy ? ` · Usada por @${e.usedBy}` : ""}
+      </div>
+     </div>
+     <button onClick={() => toggleUsed(e.email)} style={{
+      padding: "4px 8px", borderRadius: 6, border: `1px solid ${t.border}`,
+      background: e.used ? t.greenSoft : t.bgInput, cursor: "pointer",
+      fontSize: 9, fontWeight: 600, color: e.used ? t.green : t.textSec,
+     }}>{e.used ? "Usada" : "Disponible"}</button>
+     <button onClick={() => removeEmail(e.email)} style={{
+      background: "none", border: "none", cursor: "pointer", color: t.textTer, fontSize: 14,
+     }}>✕</button>
+    </div>
+   ))}
+
+   {filtered.length === 0 && (
+    <div style={{ textAlign: "center", padding: 24, color: t.textSec, fontSize: 13 }}>
+     {filter === "all" ? "Agrega correos arriba" : "No hay correos en esta categoría"}
     </div>
    )}
   </div>
