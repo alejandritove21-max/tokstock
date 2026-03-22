@@ -121,24 +121,25 @@ export const useStore = create<AppState>((set, get) => ({
   loading: true,
   loadAccounts: async () => {
     try {
-      // Load available/disqualified with screenshots, sold without
-      const { data: availData, error: e1 } = await supabase
+      // Single query - get all accounts, exclude screenshot for sold ones after
+      const { data, error } = await supabase
         .from("accounts")
-        .select("*")
-        .in("status", ["available", "disqualified"])
+        .select("id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at, screenshot")
         .order("created_at", { ascending: false })
 
-      const { data: soldData, error: e2 } = await supabase
-        .from("accounts")
-        .select("id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at")
-        .eq("status", "sold")
-        .order("created_at", { ascending: false })
+      if (error) {
+        console.error("Supabase query error:", error)
+        // Fallback: try without screenshot column
+        const { data: fallback, error: e2 } = await supabase
+          .from("accounts")
+          .select("id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at")
+          .order("created_at", { ascending: false })
+        if (e2) { console.error("Fallback also failed:", e2); set({ loading: false }); return }
+        set({ accounts: (fallback || []).map(fromDbAccount), loading: false })
+        return
+      }
 
-      const all = [
-        ...(availData || []).map(fromDbAccount),
-        ...(soldData || []).map(fromDbAccount),
-      ]
-      set({ accounts: all, loading: false })
+      set({ accounts: (data || []).map(fromDbAccount), loading: false })
     } catch (e) {
       console.error("Failed to load accounts:", e)
       set({ loading: false })
@@ -176,7 +177,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const [countries, categories, aiProviders, whatsappTemplate, goals, emailWarehouse, theme] = await Promise.all([
+      const results = await Promise.allSettled([
         db.getSetting("countries"),
         db.getSetting("categories"),
         db.getSetting("aiProviders"),
@@ -185,14 +186,15 @@ export const useStore = create<AppState>((set, get) => ({
         db.getSetting("emailWarehouse"),
         db.getSetting("theme"),
       ])
+      const val = (i: number) => results[i].status === "fulfilled" ? (results[i] as any).value : null
       set({
-        countries: countries || DEFAULT_COUNTRIES,
-        categories: categories || DEFAULT_CATEGORIES,
-        aiProviders: aiProviders || [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
-        whatsappTemplate: whatsappTemplate || get().whatsappTemplate,
-        goals: Array.isArray(goals) ? goals : [],
-        emailWarehouse: Array.isArray(emailWarehouse) ? emailWarehouse : [],
-        darkMode: theme !== "light",
+        countries: Array.isArray(val(0)) ? val(0) : DEFAULT_COUNTRIES,
+        categories: Array.isArray(val(1)) ? val(1) : DEFAULT_CATEGORIES,
+        aiProviders: Array.isArray(val(2)) ? val(2) : [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
+        whatsappTemplate: typeof val(3) === "string" ? val(3) : get().whatsappTemplate,
+        goals: Array.isArray(val(4)) ? val(4) : [],
+        emailWarehouse: Array.isArray(val(5)) ? val(5) : [],
+        darkMode: val(6) !== "light",
       })
     } catch (e) {
       console.error("Failed to load settings:", e)

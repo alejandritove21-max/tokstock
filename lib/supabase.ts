@@ -36,28 +36,28 @@ export function toDbAccount(acc: Record<string, any>) {
 export function fromDbAccount(row: Record<string, any>) {
   return {
     id: row.id,
-    username: row.username,
-    profileName: row.profile_name,
-    followers: row.followers,
-    profileLink: row.profile_link,
-    country: row.country,
-    categories: row.categories || [],
-    niche: row.niche,
-    screenshot: row.screenshot,
-    notes: row.notes,
-    purchasePrice: row.purchase_price,
-    estimatedSalePrice: row.estimated_sale_price,
-    realSalePrice: row.real_sale_price,
-    profit: row.profit,
-    email: row.email,
-    tiktokPassword: row.tiktok_password,
-    emailPassword: row.email_password,
-    emailPasswordSame: row.email_password_same,
-    status: row.status,
-    soldDate: row.sold_date,
-    disqualifiedDate: row.disqualified_date,
-    buyer: row.buyer,
-    createdAt: row.created_at,
+    username: row.username || "",
+    profileName: row.profile_name || "",
+    followers: row.followers || 0,
+    profileLink: row.profile_link || "",
+    country: row.country || "",
+    categories: Array.isArray(row.categories) ? row.categories : [],
+    niche: row.niche || "",
+    screenshot: row.screenshot || "",
+    notes: row.notes || "",
+    purchasePrice: row.purchase_price || 0,
+    estimatedSalePrice: row.estimated_sale_price || 0,
+    realSalePrice: row.real_sale_price || 0,
+    profit: row.profit || 0,
+    email: row.email || "",
+    tiktokPassword: row.tiktok_password || "",
+    emailPassword: row.email_password || "",
+    emailPasswordSame: row.email_password_same || false,
+    status: row.status || "available",
+    soldDate: row.sold_date || null,
+    disqualifiedDate: row.disqualified_date || null,
+    buyer: row.buyer || "",
+    createdAt: row.created_at || "",
   }
 }
 
@@ -114,13 +114,17 @@ export const db = {
   },
 
   async getSetting(key: string) {
-    const { data, error } = await supabase
-      .from("settings")
-      .select("value")
-      .eq("key", key)
-      .single()
-    if (error && error.code !== "PGRST116") throw error
-    return data?.value ?? null
+    try {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", key)
+        .single()
+      if (error) return null
+      return data?.value ?? null
+    } catch {
+      return null
+    }
   },
 
   async setSetting(key: string, value: any) {
