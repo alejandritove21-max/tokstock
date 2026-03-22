@@ -548,18 +548,18 @@ export default function App() {
 // ─── STATUS BADGE ───
 function StatusBadge({ status, t }) {
  const config = {
-  available: { label: "Disponible", bg: t.greenSoft, color: t.green },
-  sold: { label: "Vendida", bg: t.blueSoft, color: t.blue },
-  disqualified: { label: "Descalificada", bg: t.redSoft, color: t.red },
+  available: { label: "Disponible", color: t.green, dot: t.green },
+  sold: { label: "Vendida", color: t.blue, dot: t.blue },
+  disqualified: { label: "Desc.", color: t.red, dot: t.red },
  };
  const c = config[status] || config.available;
  return (
   <span style={{
-   fontSize: 9, fontWeight: 700, padding: "2px 6px",
-   borderRadius: 5, background: c.bg, color: c.color,
-   textTransform: "uppercase", letterSpacing: 0.3,
+   display: "inline-flex", alignItems: "center", gap: 4,
+   fontSize: 9, fontWeight: 600, color: c.color,
    whiteSpace: "nowrap", flexShrink: 0,
   }}>
+   <span style={{ width: 5, height: 5, borderRadius: 3, background: c.dot }} />
    {c.label}
   </span>
  );
@@ -571,7 +571,7 @@ function Card({ t, children, style = {}, onClick }) {
   <div
    onClick={onClick}
    style={{
-    background: t.bgCard, borderRadius: 16, padding: 16,
+    background: t.bgCard, borderRadius: 14, padding: 14,
     border: `1px solid ${t.border}`, cursor: onClick ? "pointer" : "default",
     transition: "all .2s", ...style,
    }}
@@ -585,37 +585,42 @@ function Card({ t, children, style = {}, onClick }) {
 function AccountListItem({ account, t, onSelect }) {
  const a = account;
  const cat = (a.categories || [])[0] || "";
+ const price = a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice);
  return (
   <div
    onClick={() => onSelect(a)}
    style={{
-    display: "grid",
-    gridTemplateColumns: "42px 1fr 72px",
-    gap: 10, alignItems: "center",
     padding: "10px 12px", marginBottom: 6, borderRadius: 12,
     background: t.bgCard, border: `1px solid ${t.border}`,
-    cursor: "pointer", height: 62, overflow: "hidden",
+    cursor: "pointer", overflow: "hidden",
    }}
   >
-   <div style={{
-    width: 42, height: 42, borderRadius: 10, flexShrink: 0,
-    background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
-   }} />
-   <div style={{ overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
-     <span style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 1 }}>@{a.username || "—"}</span>
-     <span style={{ flexShrink: 0 }}><StatusBadge status={a.status} t={t} /></span>
+   {/* Row 1: Avatar + Username + Price */}
+   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{
+     width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+     background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
+    }} />
+    <div style={{ flex: 1, minWidth: 0 }}>
+     <div style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      @{a.username || "—"}
+     </div>
     </div>
-    <div style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-     <span>{fmtK(a.followers)}</span>
-     <span style={{ margin: "0 3px" }}>·</span>
-     <span>{a.country || "—"}</span>
-     {cat ? <><span style={{ margin: "0 3px" }}>·</span><span style={{ color: t.accent }}>{cat}</span></> : null}
+    <div style={{ textAlign: "right", flexShrink: 0 }}>
+     <div style={{ fontSize: 14, fontWeight: 800, color: t.text }}>{fmt(price)}</div>
     </div>
    </div>
-   <div style={{ textAlign: "right", flexShrink: 0 }}>
-    <div style={{ fontSize: 14, fontWeight: 700, color: t.text, whiteSpace: "nowrap" }}>{fmt(a.status === "sold" ? a.realSalePrice : (a.estimatedSalePrice || a.purchasePrice))}</div>
-    <div style={{ fontSize: 9, color: t.textSec, marginTop: 1 }}>{a.status === "sold" ? "vendida" : "estimado"}</div>
+   {/* Row 2: Tags */}
+   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "nowrap", overflow: "hidden" }}>
+    <StatusBadge status={a.status} t={t} />
+    <span style={{ width: 1, height: 10, background: t.border, flexShrink: 0 }} />
+    <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap" }}>{fmtK(a.followers)}</span>
+    <span style={{ width: 1, height: 10, background: t.border, flexShrink: 0 }} />
+    <span style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.country || "—"}</span>
+    {cat && <>
+     <span style={{ width: 1, height: 10, background: t.border, flexShrink: 0 }} />
+     <span style={{ fontSize: 10, color: t.accent, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat}</span>
+    </>}
    </div>
   </div>
  );
@@ -707,7 +712,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v30</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v32</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -732,28 +737,27 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     )}
    </div>
 
-   {/* Active Goal Progress */}
-   {goals && goals.length > 0 && (() => {
-    const g = goals.find(g2 => {
-     const sold = accounts.filter(a => a.status === "sold" && a.soldDate && a.soldDate >= g2.startDate);
-     return sold.reduce((s, a) => s + (a.profit || 0), 0) < g2.amount;
-    }) || goals[goals.length - 1];
-    if (!g) return null;
+   {/* Goals Progress */}
+   {goals && goals.length > 0 && goals.map(g => {
     const earned = accounts.filter(a => a.status === "sold" && a.soldDate && a.soldDate >= g.startDate).reduce((s, a) => s + (a.profit || 0), 0);
     const pct = Math.min((earned / g.amount) * 100, 100);
     const done = earned >= g.amount;
     return (
-     <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: t.bgCard, border: `1px solid ${t.border}` }}>
+     <div key={g.id} style={{ marginBottom: 8, padding: "10px 14px", borderRadius: 12, background: t.bgCard, border: `1px solid ${t.border}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-       <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>🎯 {g.name}</span>
-       <span style={{ fontSize: 11, color: done ? t.green : t.textSec }}>{fmt(earned)} / {fmt(g.amount)}</span>
+       <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>{done ? "✅" : "🎯"} {g.name}</span>
+       <span style={{ fontSize: 10, color: done ? t.green : t.textSec, fontWeight: 600 }}>{pct.toFixed(0)}%</span>
       </div>
-      <div style={{ width: "100%", height: 5, borderRadius: 3, background: t.bgInput }}>
+      <div style={{ width: "100%", height: 6, borderRadius: 3, background: t.bgInput }}>
        <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: done ? t.green : t.accent, transition: "width .5s" }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: t.textSec }}>
+       <span>{fmt(earned)} ganado</span>
+       <span>{done ? "¡Completada!" : `Faltan ${fmt(Math.max(g.amount - earned, 0))}`}</span>
       </div>
      </div>
     );
-   })()}
+   })}
 
    {/* Net Cash Flow (all time) */}
    <Card t={t} style={{
