@@ -108,27 +108,27 @@ const Icons = {
 
 // ─── STYLES ───
 const getTheme = (dark) => ({
- bg: dark ? "#111111" : "#f5f5f5",
- bgCard: dark ? "#1a1a1a" : "#ffffff",
- bgCardAlt: dark ? "#202020" : "#fafafa",
- bgInput: dark ? "#202020" : "#eeeeee",
- text: dark ? "#ececec" : "#1a1a1a",
- textSec: dark ? "#888888" : "#666666",
- textTer: dark ? "#555555" : "#aaaaaa",
- accent: dark ? "#4a9eff" : "#2680eb",
- accentSoft: dark ? "#4a9eff15" : "#2680eb0c",
- green: dark ? "#4cd964" : "#28a745",
- greenSoft: dark ? "#4cd96412" : "#28a7450a",
- red: dark ? "#ff6b6b" : "#dc3545",
- redSoft: dark ? "#ff6b6b12" : "#dc35450a",
- yellow: dark ? "#ffc107" : "#e6a800",
- yellowSoft: dark ? "#ffc10712" : "#e6a8000a",
- blue: dark ? "#4a9eff" : "#2680eb",
- blueSoft: dark ? "#4a9eff12" : "#2680eb0a",
- border: dark ? "#2a2a2a" : "#e0e0e0",
- borderLight: dark ? "#222222" : "#f0f0f0",
- shadow: dark ? "0 2px 8px rgba(0,0,0,.4)" : "0 1px 4px rgba(0,0,0,.06)",
- shadowLg: dark ? "0 8px 24px rgba(0,0,0,.5)" : "0 4px 16px rgba(0,0,0,.08)",
+ bg: dark ? "#0d0d0f" : "#f5f5f7",
+ bgCard: dark ? "#18181b" : "#ffffff",
+ bgCardAlt: dark ? "#1f1f23" : "#f9f9fb",
+ bgInput: dark ? "#1f1f23" : "#efefef",
+ text: dark ? "#eee" : "#1a1a1a",
+ textSec: dark ? "#777" : "#666",
+ textTer: dark ? "#444" : "#aaa",
+ accent: dark ? "#3b82f6" : "#2563eb",
+ accentSoft: dark ? "#3b82f615" : "#2563eb0a",
+ green: dark ? "#22c55e" : "#16a34a",
+ greenSoft: dark ? "#22c55e12" : "#16a34a0a",
+ red: dark ? "#ef4444" : "#dc2626",
+ redSoft: dark ? "#ef444412" : "#dc26260a",
+ yellow: dark ? "#eab308" : "#ca8a04",
+ yellowSoft: dark ? "#eab30812" : "#ca8a040a",
+ blue: dark ? "#3b82f6" : "#2563eb",
+ blueSoft: dark ? "#3b82f612" : "#2563eb0a",
+ border: dark ? "#252528" : "#e5e5e5",
+ borderLight: dark ? "#1c1c1f" : "#f0f0f0",
+ shadow: dark ? "0 1px 4px rgba(0,0,0,.5)" : "0 1px 3px rgba(0,0,0,.05)",
+ shadowLg: dark ? "0 8px 24px rgba(0,0,0,.6)" : "0 4px 16px rgba(0,0,0,.08)",
 });
 
 
@@ -391,7 +391,7 @@ export default function App() {
     />
    ) : (
     <>
-     {tab === "home" && <HomeScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} />}
+     {tab === "home" && <HomeScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} goals={goals} />}
      {tab === "stock" && (
       <StockScreen accounts={accounts} t={t} dark={dark}
        countries={countries}
@@ -446,17 +446,17 @@ export default function App() {
       style={{
        position: "fixed", bottom: 20, left: 20,
        marginBottom: "env(safe-area-inset-bottom, 0px)",
-       width: 48, height: 48, borderRadius: 12,
+       width: 46, height: 46, borderRadius: 14,
        border: `1px solid ${t.border}`,
        background: t.bgCard, cursor: "pointer", zIndex: 110,
        display: "flex", alignItems: "center", justifyContent: "center",
        boxShadow: t.shadowLg,
       }}
      >
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-       <div style={{ width: 16, height: 1.5, borderRadius: 1, background: t.text, transition: "all .2s", transform: menuOpen ? "rotate(45deg) translate(3px, 3px)" : "none" }} />
-       <div style={{ width: 16, height: 1.5, borderRadius: 1, background: t.text, transition: "all .2s", opacity: menuOpen ? 0 : 1 }} />
-       <div style={{ width: 16, height: 1.5, borderRadius: 1, background: t.text, transition: "all .2s", transform: menuOpen ? "rotate(-45deg) translate(3px, -3px)" : "none" }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 3.5 }}>
+       <div style={{ width: 18, height: 1.5, borderRadius: 1, background: menuOpen ? t.accent : t.textSec, transition: "all .2s", transform: menuOpen ? "rotate(45deg) translate(3.5px, 3.5px)" : "none" }} />
+       <div style={{ width: 18, height: 1.5, borderRadius: 1, background: t.textSec, transition: "all .2s", opacity: menuOpen ? 0 : 1 }} />
+       <div style={{ width: 18, height: 1.5, borderRadius: 1, background: menuOpen ? t.accent : t.textSec, transition: "all .2s", transform: menuOpen ? "rotate(-45deg) translate(3.5px, -3.5px)" : "none" }} />
       </div>
      </button>
 
@@ -464,27 +464,26 @@ export default function App() {
      {menuOpen && (
       <>
        <div onClick={() => setMenuOpen(false)} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 108,
-        backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
+        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 108,
        }} />
        <div style={{
         position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
         maxWidth: 440, width: "100%", zIndex: 109,
         background: t.bgCard,
         borderRadius: "20px 20px 0 0",
-        padding: "0 16px calc(80px + env(safe-area-inset-bottom, 8px))",
+        padding: "0 20px calc(80px + env(safe-area-inset-bottom, 8px))",
         boxShadow: t.shadowLg,
-        animation: "slideUp .25s ease",
+        animation: "slideUp .2s ease",
        }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "10px auto 16px" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+        <div style={{ width: 32, height: 4, borderRadius: 2, background: t.border, margin: "10px auto 16px" }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
          {[
           { id: "home", label: "Inicio", icon: "🏠" },
           { id: "stock", label: "Stock", icon: "📦" },
           { id: "reports", label: "Reportes", icon: "📊" },
           { id: "search", label: "Buscar", icon: "🔍" },
           { id: "goals", label: "Metas", icon: "🎯" },
-          { id: "config", label: "Config", icon: "⚙️" },
+          { id: "config", label: "Ajustes", icon: "⚙️" },
          ].map((item) => {
           const active = tab === item.id;
           return (
@@ -492,15 +491,15 @@ export default function App() {
            key={item.id}
            onClick={() => { setTab(item.id); setMenuOpen(false); }}
            style={{
-            flex: 1, padding: "14px 4px", borderRadius: 14,
-            border: "none", cursor: "pointer",
-            background: active ? t.accent : "transparent",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            transition: "all .15s",
+            padding: "14px 8px", borderRadius: 14,
+            border: active ? `1.5px solid ${t.accent}` : `1px solid ${t.border}`,
+            cursor: "pointer",
+            background: active ? t.accentSoft : t.bgCardAlt,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
            }}
           >
-           <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
-           <span style={{ fontSize: 10, fontWeight: 600, color: active ? "#fff" : t.textSec }}>{item.label}</span>
+           <span style={{ fontSize: 20 }}>{item.icon}</span>
+           <span style={{ fontSize: 11, fontWeight: 600, color: active ? t.accent : t.textSec }}>{item.label}</span>
           </button>
           );
          })}
@@ -623,7 +622,7 @@ function AccountListItem({ account, t, onSelect }) {
 }
 
 // ─── HOME SCREEN ───
-function HomeScreen({ accounts, t, dark, onSelect }) {
+function HomeScreen({ accounts, t, dark, onSelect, goals }) {
  const [period, setPeriod] = useState("today");
  const [locationInfo, setLocationInfo] = useState(null);
 
@@ -708,7 +707,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v29</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v30</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -732,6 +731,29 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
      </div>
     )}
    </div>
+
+   {/* Active Goal Progress */}
+   {goals && goals.length > 0 && (() => {
+    const g = goals.find(g2 => {
+     const sold = accounts.filter(a => a.status === "sold" && a.soldDate && a.soldDate >= g2.startDate);
+     return sold.reduce((s, a) => s + (a.profit || 0), 0) < g2.amount;
+    }) || goals[goals.length - 1];
+    if (!g) return null;
+    const earned = accounts.filter(a => a.status === "sold" && a.soldDate && a.soldDate >= g.startDate).reduce((s, a) => s + (a.profit || 0), 0);
+    const pct = Math.min((earned / g.amount) * 100, 100);
+    const done = earned >= g.amount;
+    return (
+     <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: t.bgCard, border: `1px solid ${t.border}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+       <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>🎯 {g.name}</span>
+       <span style={{ fontSize: 11, color: done ? t.green : t.textSec }}>{fmt(earned)} / {fmt(g.amount)}</span>
+      </div>
+      <div style={{ width: "100%", height: 5, borderRadius: 3, background: t.bgInput }}>
+       <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: done ? t.green : t.accent, transition: "width .5s" }} />
+      </div>
+     </div>
+    );
+   })()}
 
    {/* Net Cash Flow (all time) */}
    <Card t={t} style={{
@@ -2591,79 +2613,89 @@ function GoalsScreen({ accounts, t, dark, goals, saveGoals }) {
  const [newGoalName, setNewGoalName] = useState("");
  const [newGoalAmount, setNewGoalAmount] = useState("");
 
- const totalProfit = accounts.filter(a => a.status === "sold").reduce((s, a) => s + (a.profit || 0), 0);
- const profit30 = accounts.filter(a => a.status === "sold" && a.soldDate && daysAgo(a.soldDate, 30)).reduce((s, a) => s + (a.profit || 0), 0);
-
  const addGoal = () => {
   if (!newGoalName || !newGoalAmount) return;
-  const g = { id: uid(), name: newGoalName, amount: Number(newGoalAmount), created: today() };
+  const g = { id: uid(), name: newGoalName, amount: Number(newGoalAmount), startDate: today(), startProfit: accounts.filter(a => a.status === "sold").reduce((s, a) => s + (a.profit || 0), 0) };
   saveGoals([...goals, g]);
   setNewGoalName(""); setNewGoalAmount("");
  };
 
  const removeGoal = (id) => saveGoals(goals.filter(g => g.id !== id));
 
+ // Calculate profit SINCE each goal was created
+ const getGoalProgress = (g) => {
+  const soldSinceGoal = accounts.filter(a => a.status === "sold" && a.soldDate && a.soldDate >= g.startDate);
+  const profitSinceGoal = soldSinceGoal.reduce((s, a) => s + (a.profit || 0), 0);
+  return profitSinceGoal;
+ };
+
  return (
   <div style={{ padding: "8px 16px 0" }}>
-   <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 14 }}>🎯 Metas</div>
+   <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 14 }}>Metas</div>
 
-   {/* Current earnings summary */}
-   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-    <Card t={t} style={{ padding: 12, textAlign: "center" }}>
-     <div style={{ fontSize: 10, color: t.textSec }}>Ganancia total</div>
-     <div style={{ fontSize: 18, fontWeight: 800, color: t.green, marginTop: 2 }}>{fmt(totalProfit)}</div>
-    </Card>
-    <Card t={t} style={{ padding: 12, textAlign: "center" }}>
-     <div style={{ fontSize: 10, color: t.textSec }}>Ganancia 30d</div>
-     <div style={{ fontSize: 18, fontWeight: 800, color: t.green, marginTop: 2 }}>{fmt(profit30)}</div>
-    </Card>
-   </div>
-
-   {/* Add new goal */}
-   <Card t={t} style={{ marginBottom: 16, padding: 14 }}>
-    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Nueva meta</div>
-    <input placeholder="Nombre (ej: iPhone, Laptop...)" value={newGoalName} onChange={e => setNewGoalName(e.target.value)}
-     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 8, outline: "none" }} />
-    <input type="number" placeholder="Monto ($)" value={newGoalAmount} onChange={e => setNewGoalAmount(e.target.value)}
-     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 10, outline: "none" }} />
-    <button onClick={addGoal} style={{
-     width: "100%", padding: 10, borderRadius: 8, border: "none",
-     background: t.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
-    }}>Agregar meta</button>
-   </Card>
-
-   {/* Goals list */}
+   {/* Active goals */}
    {goals.map(g => {
-    const progress = Math.min((totalProfit / g.amount) * 100, 100);
-    const completed = totalProfit >= g.amount;
+    const earned = getGoalProgress(g);
+    const pct = Math.min((earned / g.amount) * 100, 100);
+    const done = earned >= g.amount;
+    const remaining = Math.max(g.amount - earned, 0);
     return (
-     <Card t={t} key={g.id} style={{ marginBottom: 10, padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-       <div>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{completed ? "✅ " : ""}{g.name}</div>
-        <div style={{ fontSize: 11, color: t.textSec, marginTop: 1 }}>{fmt(totalProfit)} / {fmt(g.amount)}</div>
+     <Card t={t} key={g.id} style={{ marginBottom: 10, padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "14px 14px 0" }}>
+       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+         <div style={{ fontSize: 15, fontWeight: 700 }}>{done ? "✅ " : "🎯 "}{g.name}</div>
+         <div style={{ fontSize: 11, color: t.textSec, marginTop: 2 }}>
+          Desde {new Date(g.startDate).toLocaleDateString("es", { day: "numeric", month: "short" })}
+         </div>
+        </div>
+        <button onClick={() => removeGoal(g.id)} style={{ background: "none", border: "none", cursor: "pointer", color: t.textTer, fontSize: 16, padding: 4 }}>✕</button>
        </div>
-       <button onClick={() => removeGoal(g.id)} style={{ background: "none", border: "none", cursor: "pointer", color: t.red, fontSize: 12 }}>✕</button>
+       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 10, marginBottom: 6 }}>
+        <span style={{ fontSize: 22, fontWeight: 800, color: done ? t.green : t.text }}>{fmt(earned)}</span>
+        <span style={{ fontSize: 12, color: t.textSec }}>de {fmt(g.amount)}</span>
+       </div>
       </div>
-      <div style={{ width: "100%", height: 8, borderRadius: 4, background: t.bgInput, overflow: "hidden" }}>
+      {/* Volume-style progress bar */}
+      <div style={{ width: "100%", height: 6, background: t.bgInput }}>
        <div style={{
-        width: `${progress}%`, height: "100%", borderRadius: 4,
-        background: completed ? t.green : `linear-gradient(90deg, ${t.accent}, ${t.blue})`,
-        transition: "width .5s ease",
+        width: `${pct}%`, height: "100%",
+        background: done ? t.green : `linear-gradient(90deg, ${t.accent}, ${t.blue})`,
+        transition: "width .6s ease",
+        borderRadius: pct >= 100 ? 0 : "0 3px 3px 0",
        }} />
       </div>
-      <div style={{ fontSize: 10, color: completed ? t.green : t.textSec, marginTop: 4, textAlign: "right", fontWeight: 600 }}>
-       {completed ? "¡Meta alcanzada!" : `${progress.toFixed(0)}%`}
+      <div style={{ padding: "8px 14px 12px", display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+       <span style={{ color: done ? t.green : t.textSec, fontWeight: 600 }}>
+        {done ? "¡Meta alcanzada!" : `Faltan ${fmt(remaining)}`}
+       </span>
+       <span style={{ color: t.textTer, fontWeight: 600 }}>{pct.toFixed(0)}%</span>
       </div>
      </Card>
     );
    })}
 
+   {/* Add new goal */}
+   <Card t={t} style={{ marginBottom: 16, padding: 14 }}>
+    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>+ Nueva meta</div>
+    <input placeholder="Nombre (ej: iPhone, Laptop...)" value={newGoalName} onChange={e => setNewGoalName(e.target.value)}
+     style={{ width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 8, outline: "none" }} />
+    <input type="number" placeholder="Monto objetivo ($)" value={newGoalAmount} onChange={e => setNewGoalAmount(e.target.value)}
+     style={{ width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 10, outline: "none" }} />
+    <button onClick={addGoal} disabled={!newGoalName || !newGoalAmount} style={{
+     width: "100%", padding: 11, borderRadius: 10, border: "none",
+     background: (!newGoalName || !newGoalAmount) ? t.bgInput : t.accent,
+     color: (!newGoalName || !newGoalAmount) ? t.textTer : "#fff",
+     fontSize: 13, fontWeight: 700, cursor: "pointer",
+    }}>Crear meta</button>
+   </Card>
+
    {goals.length === 0 && (
-    <Card t={t} style={{ textAlign: "center", padding: 24 }}>
-     <div style={{ fontSize: 13, color: t.textSec }}>No tienes metas configuradas</div>
-     <div style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>Agrega una meta arriba para trackear tu progreso</div>
-    </Card>
+    <div style={{ textAlign: "center", padding: "30px 0" }}>
+     <div style={{ fontSize: 36, marginBottom: 8 }}>🎯</div>
+     <div style={{ fontSize: 13, color: t.textSec }}>Crea tu primera meta</div>
+     <div style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>La ganancia se cuenta desde el día que la crees</div>
+    </div>
    )}
   </div>
  );
