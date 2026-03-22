@@ -1,14 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Copy, Eye, EyeOff, Edit, Trash2, Check, X, DollarSign, Ban, RotateCcw } from "lucide-react"
+import { ArrowLeft, Copy, Eye, EyeOff, Edit, Trash2, Check, X, DollarSign, Ban, RotateCcw, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore, formatCurrency, formatFollowers, today } from "@/lib/store"
+import { db } from "@/lib/supabase"
 
 export function AccountDetail() {
   const { selectedAccount: a, setSelectedAccount, setEditingAccount, updateAccount, deleteAccount, setActiveTab, notify, whatsappTemplate, countries } = useStore()
   const [showCreds, setShowCreds] = useState(false)
   const [imgRevealed, setImgRevealed] = useState(false)
+  const [loadedScreenshot, setLoadedScreenshot] = useState(a.screenshot || "")
+  const [loadingImg, setLoadingImg] = useState(false)
   const [copied, setCopied] = useState("")
   const [confirmAction, setConfirmAction] = useState<string | null>(null)
   const [sellPrice, setSellPrice] = useState("")
@@ -87,25 +90,51 @@ export function AccountDetail() {
       </div>
 
       {/* Profile Image */}
-      {a.screenshot && (
-        <button
-          onClick={() => {
-            if (!imgRevealed) { setImgRevealed(true); return }
-            window.open(a.screenshot, "_blank")
-          }}
-          className="relative w-full overflow-hidden rounded-2xl border border-border"
-        >
-          <img
-            src={a.screenshot}
-            alt=""
-            className={cn("h-48 w-full object-cover transition-all duration-300", !imgRevealed && "blur-xl scale-105")}
-          />
-          {!imgRevealed && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <Eye className="h-8 w-8 text-white" />
-            </div>
-          )}
-        </button>
+      {(loadedScreenshot || a.status === "sold") && (
+        <div className="relative w-full overflow-hidden rounded-2xl border border-border">
+          {loadedScreenshot ? (
+            <button
+              onClick={() => {
+                if (!imgRevealed) { setImgRevealed(true); return }
+                window.open(loadedScreenshot, "_blank")
+              }}
+              className="w-full"
+            >
+              <img
+                src={loadedScreenshot}
+                alt=""
+                className={cn("h-48 w-full object-cover transition-all duration-300", !imgRevealed && "blur-xl scale-105")}
+              />
+              {!imgRevealed && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <Eye className="h-8 w-8 text-white" />
+                </div>
+              )}
+            </button>
+          ) : a.status === "sold" && !loadedScreenshot ? (
+            <button
+              onClick={async () => {
+                setLoadingImg(true)
+                try {
+                  const screenshot = await db.getAccountScreenshot(a.id)
+                  if (screenshot) setLoadedScreenshot(screenshot)
+                  else setLoadedScreenshot("")
+                } catch {}
+                setLoadingImg(false)
+              }}
+              className="flex h-32 w-full items-center justify-center bg-secondary"
+            >
+              {loadingImg ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : (
+                <div className="text-center">
+                  <Eye className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="mt-1 text-xs text-muted-foreground">Cargar imagen</p>
+                </div>
+              )}
+            </button>
+          ) : null}
+        </div>
       )}
 
       {/* Public Data */}

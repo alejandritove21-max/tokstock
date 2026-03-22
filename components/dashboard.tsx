@@ -23,10 +23,18 @@ function getPeriodStart(key: string): Date {
   return start
 }
 
+function isInPeriod(dateStr: string | null, start: Date): boolean {
+  if (!dateStr) return false
+  try {
+    const d = new Date(new Date(dateStr).toLocaleString("en-US", { timeZone: "America/Caracas" }))
+    return d >= start
+  } catch { return false }
+}
+
 function calcStats(accounts: Account[], periodKey: string) {
   const start = getPeriodStart(periodKey)
-  const sold = accounts.filter(a => a.status === "sold" && a.soldDate && new Date(a.soldDate) >= start)
-  const disq = accounts.filter(a => a.status === "disqualified" && a.disqualifiedDate && new Date(a.disqualifiedDate) >= start)
+  const sold = accounts.filter(a => a.status === "sold" && isInPeriod(a.soldDate, start))
+  const disq = accounts.filter(a => a.status === "disqualified" && isInPeriod(a.disqualifiedDate, start))
   const revenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
   const costSold = sold.reduce((s, a) => s + (a.purchasePrice || 0), 0)
   const profit = revenue - costSold

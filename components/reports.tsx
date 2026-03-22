@@ -2,18 +2,15 @@
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { useStore, formatCurrency, venezuelaDate, type Account } from "@/lib/store"
+import { useStore, formatCurrency, venezuelaDate, toVenezuelaKey, today, type Account } from "@/lib/store"
 
 const tabs = ["Diario", "Mensual", "Trimestral"] as const
-
-function getDayKey(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-CA", { timeZone: "America/Caracas" })
-}
 
 export function Reports() {
   const { accounts } = useStore()
   const [tab, setTab] = useState<string>("Diario")
   const now = venezuelaDate()
+  const todayKey = today()
 
   // ── Daily ──
   const dailyData = () => {
@@ -24,10 +21,10 @@ export function Reports() {
       days[key] = { sold: [], disq: [], added: [] }
     }
     accounts.forEach(a => {
-      const created = a.createdAt ? getDayKey(a.createdAt) : null
+      const created = toVenezuelaKey(a.createdAt)
       if (created && days[created]) days[created].added.push(a)
-      if (a.status === "sold" && a.soldDate) { const k = getDayKey(a.soldDate); if (days[k]) days[k].sold.push(a) }
-      if (a.status === "disqualified" && a.disqualifiedDate) { const k = getDayKey(a.disqualifiedDate); if (days[k]) days[k].disq.push(a) }
+      if (a.status === "sold" && a.soldDate) { const k = toVenezuelaKey(a.soldDate); if (k && days[k]) days[k].sold.push(a) }
+      if (a.status === "disqualified" && a.disqualifiedDate) { const k = toVenezuelaKey(a.disqualifiedDate); if (k && days[k]) days[k].disq.push(a) }
     })
     return Object.entries(days).map(([date, d]) => {
       const profit = d.sold.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
@@ -116,7 +113,7 @@ export function Reports() {
           <div className="flex flex-col gap-2">
             {daily.map((d, i) => {
               const dayStr = new Date(d.date).toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "short", timeZone: "America/Caracas" })
-              const isToday = d.date === now.toLocaleDateString("en-CA")
+              const isToday = d.date === todayKey
               return (
                 <div key={i} className={cn("flex items-center justify-between rounded-xl border bg-card p-4", isToday ? "border-primary/30 bg-primary/5" : "border-border")}>
                   <div>

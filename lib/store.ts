@@ -121,25 +121,27 @@ export const useStore = create<AppState>((set, get) => ({
   loading: true,
   loadAccounts: async () => {
     try {
-      // Single query - get all accounts, exclude screenshot for sold ones after
-      const { data, error } = await supabase
+      const fields = "id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at"
+
+      // Available + disqualified: WITH screenshots
+      const { data: withImg } = await supabase
         .from("accounts")
-        .select("id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at, screenshot")
+        .select(fields + ", screenshot")
+        .in("status", ["available", "disqualified"])
         .order("created_at", { ascending: false })
 
-      if (error) {
-        console.error("Supabase query error:", error)
-        // Fallback: try without screenshot column
-        const { data: fallback, error: e2 } = await supabase
-          .from("accounts")
-          .select("id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at")
-          .order("created_at", { ascending: false })
-        if (e2) { console.error("Fallback also failed:", e2); set({ loading: false }); return }
-        set({ accounts: (fallback || []).map(fromDbAccount), loading: false })
-        return
-      }
+      // Sold: WITHOUT screenshots (lighter)
+      const { data: noImg } = await supabase
+        .from("accounts")
+        .select(fields)
+        .eq("status", "sold")
+        .order("created_at", { ascending: false })
 
-      set({ accounts: (data || []).map(fromDbAccount), loading: false })
+      const all = [
+        ...((withImg || []).map(fromDbAccount)),
+        ...((noImg || []).map(fromDbAccount)),
+      ]
+      set({ accounts: all, loading: false })
     } catch (e) {
       console.error("Failed to load accounts:", e)
       set({ loading: false })
@@ -246,4 +248,14 @@ export function today(): string {
 
 export function venezuelaDate(): Date {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Caracas" }))
+}
+
+// Convert any date string to Venezuela date key (YYYY-MM-DD)
+export function toVenezuelaKey(dateStr: string | null): string {
+  if (!dateStr) return ""
+  try {
+    return new Date(dateStr).toLocaleDateString("en-CA", { timeZone: "America/Caracas" })
+  } catch {
+    return ""
+  }
 }
