@@ -99,7 +99,7 @@ export function Dashboard() {
       </div>
 
       {/* Goals progress */}
-      {goals.length > 0 && (
+      {Array.isArray(goals) && goals.length > 0 && (
         <div className="flex flex-col gap-2">
           {goals.map(g => {
             const earned = soldAll

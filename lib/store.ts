@@ -1,7 +1,7 @@
 "use client"
 
 import { create } from "zustand"
-import { db } from "./supabase"
+import { db, supabase, fromDbAccount } from "./supabase"
 
 // ── Types ──
 
@@ -121,8 +121,24 @@ export const useStore = create<AppState>((set, get) => ({
   loading: true,
   loadAccounts: async () => {
     try {
-      const available = await db.getAccounts(true)
-      set({ accounts: available, loading: false })
+      // Load available/disqualified with screenshots, sold without
+      const { data: availData, error: e1 } = await supabase
+        .from("accounts")
+        .select("*")
+        .in("status", ["available", "disqualified"])
+        .order("created_at", { ascending: false })
+
+      const { data: soldData, error: e2 } = await supabase
+        .from("accounts")
+        .select("id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at")
+        .eq("status", "sold")
+        .order("created_at", { ascending: false })
+
+      const all = [
+        ...(availData || []).map(fromDbAccount),
+        ...(soldData || []).map(fromDbAccount),
+      ]
+      set({ accounts: all, loading: false })
     } catch (e) {
       console.error("Failed to load accounts:", e)
       set({ loading: false })
@@ -174,8 +190,8 @@ export const useStore = create<AppState>((set, get) => ({
         categories: categories || DEFAULT_CATEGORIES,
         aiProviders: aiProviders || [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
         whatsappTemplate: whatsappTemplate || get().whatsappTemplate,
-        goals: goals || [],
-        emailWarehouse: emailWarehouse || [],
+        goals: Array.isArray(goals) ? goals : [],
+        emailWarehouse: Array.isArray(emailWarehouse) ? emailWarehouse : [],
         darkMode: theme !== "light",
       })
     } catch (e) {
