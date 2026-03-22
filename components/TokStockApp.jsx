@@ -515,7 +515,7 @@ export default function App() {
        style={{
         position: "fixed", bottom: 20, right: 20,
         marginBottom: "env(safe-area-inset-bottom, 0px)",
-        width: 48, height: 48, borderRadius: 12,
+        width: 46, height: 46, borderRadius: 14,
         background: t.accent, border: "none",
         cursor: "pointer", zIndex: 101,
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -527,6 +527,64 @@ export default function App() {
        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
       >
        +
+      </button>
+     )}
+
+     {/* Broadcast button - Home only */}
+     {tab === "home" && (
+      <button
+       onClick={async () => {
+        const avail = accounts.filter(a => a.status === "available" && a.screenshot);
+        const availNoImg = accounts.filter(a => a.status === "available" && !a.screenshot);
+        if (avail.length === 0 && availNoImg.length === 0) { notify("No hay cuentas disponibles", "error"); return; }
+
+        const allAvail = [...avail, ...availNoImg];
+        let shared = 0;
+
+        for (const a of allAvail) {
+         const flag = countries.find(c => c.name === a.country)?.emoji || "";
+         const cats = (a.categories || []).join(", ");
+         const text = `*@${a.username}*\n${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}${cats ? `\n${cats}` : ""}\nPrecio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}\n${a.profileLink || ""}`;
+
+         if (a.screenshot && navigator.share && navigator.canShare) {
+          try {
+           const res = await fetch(a.screenshot);
+           const blob = await res.blob();
+           const file = new File([blob], `${a.username}.jpg`, { type: "image/jpeg" });
+           if (navigator.canShare({ files: [file], text })) {
+            await navigator.share({ files: [file], text, title: `@${a.username}` });
+            shared++;
+            continue;
+           }
+          } catch (e) {
+           if (e.name === "AbortError") {
+            notify(`${shared} de ${allAvail.length} compartidas`);
+            return;
+           }
+          }
+         }
+
+         // Fallback for accounts without image: copy text
+         try { await navigator.clipboard.writeText(text); } catch {}
+         shared++;
+        }
+
+        notify(`${shared} cuentas compartidas`);
+       }}
+       style={{
+        position: "fixed", bottom: 20, right: 76,
+        marginBottom: "env(safe-area-inset-bottom, 0px)",
+        width: 46, height: 46, borderRadius: 14,
+        background: "#25D366", border: "none",
+        cursor: "pointer", zIndex: 101,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 4px 16px rgba(37,211,102,.4)",
+        transition: "transform .15s",
+       }}
+       onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.06)"}
+       onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+      >
+       <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
       </button>
      )}
     </>
@@ -712,7 +770,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v32</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v34</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
