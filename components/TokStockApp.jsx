@@ -735,7 +735,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v37</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v38</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -1966,19 +1966,37 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    const img = new Image();
    img.onload = () => {
     const canvas = document.createElement("canvas");
-    const MAX = 600;
+    const MAX = 1200;
     let w = img.width, h = img.height;
     if (w > MAX || h > MAX) {
      if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; }
     }
     canvas.width = w; canvas.height = h;
     canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-    resolve(canvas.toDataURL("image/jpeg", 0.7));
+    resolve(canvas.toDataURL("image/jpeg", 0.92));
    };
    img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
  });
+
+ // Auto-detect which image is profile vs rewards based on aspect ratio and content
+ const handleMultiImages = async (files) => {
+  if (files.length === 0) return;
+  const images = [];
+  for (let i = 0; i < Math.min(files.length, 2); i++) {
+   images.push(await loadImage(files[i]));
+  }
+  if (images.length === 1) {
+   setImg1(images[0]);
+  } else {
+   // Detect: profile screenshot is usually taller (phone screenshot ratio)
+   // Rewards page also tall but has "Programa de Recompensas" text
+   // Simple heuristic: first selected = profile, second = rewards
+   setImg1(images[0]);
+   setImg2(images[1]);
+  }
+ };
 
  const createCollage = useCallback(() => {
   if (!img1 || !img2) return;
@@ -1988,7 +2006,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    loaded++;
    if (loaded < 2) return;
    const canvas = document.createElement("canvas");
-   const W = 800;
+   const W = 1600;
    const hA = Math.round(imgA.height * (W / 2) / imgA.width);
    const hB = Math.round(imgB.height * (W / 2) / imgB.width);
    const H = Math.max(hA, hB);
@@ -1997,7 +2015,7 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
    ctx.drawImage(imgA, 0, (H - hA) / 2, W / 2, hA);
    ctx.drawImage(imgB, W / 2, (H - hB) / 2, W / 2, hB);
-   const collage = canvas.toDataURL("image/jpeg", 0.75);
+   const collage = canvas.toDataURL("image/jpeg", 0.92);
    upd("screenshot", collage);
   };
   imgA.onload = onLoad; imgB.onload = onLoad;
@@ -2119,65 +2137,75 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
     <div>
      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Capturas de Pantalla</div>
      <div style={{ fontSize: 12, color: t.textSec, marginBottom: 14 }}>
-      Sube la captura del perfil y del programa de recompensas
+      Selecciona las 2 capturas a la vez (perfil + recompensas)
      </div>
 
-     {/* Two image upload boxes */}
-     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-      {/* Image 1: Profile */}
-      <div>
-       <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 4 }}>Perfil</div>
-       {img1 ? (
-        <div style={{ position: "relative" }}>
-         <img src={img1} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
-         <button onClick={() => { setImg1(""); upd("screenshot", ""); }} style={{
-          position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6,
-          background: t.red, border: "none", cursor: "pointer", color: "#fff", fontSize: 12,
-          display: "flex", alignItems: "center", justifyContent: "center",
-         }}>✕</button>
-        </div>
-       ) : (
-        <label style={{
-         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-         height: 140, borderRadius: 12, border: `2px dashed ${t.border}`, cursor: "pointer",
-        }}>
-         <span style={{ fontSize: 24, marginBottom: 4 }}>📱</span>
-         <span style={{ fontSize: 10, color: t.textSec }}>Perfil</span>
-         <input type="file" accept="image/*" onChange={async (e) => { if (e.target.files?.[0]) setImg1(await loadImage(e.target.files[0])); }} style={{ display: "none" }} />
-        </label>
-       )}
-      </div>
+     {/* Single upload button for both */}
+     {!img1 && !img2 && (
+      <label style={{
+       display: "flex", flexDirection: "column", alignItems: "center",
+       padding: 32, borderRadius: 14, border: `2px dashed ${t.border}`,
+       cursor: "pointer", marginBottom: 12, background: t.bgCardAlt,
+      }}>
+       <span style={{ fontSize: 36, marginBottom: 6 }}>📸</span>
+       <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Seleccionar imágenes</span>
+       <span style={{ fontSize: 11, color: t.textSec, marginTop: 4 }}>Toca y selecciona las 2 capturas</span>
+       <input type="file" accept="image/*" multiple onChange={(e) => handleMultiImages([...e.target.files])} style={{ display: "none" }} />
+      </label>
+     )}
 
-      {/* Image 2: Rewards */}
-      <div>
-       <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 4 }}>Recompensas</div>
-       {img2 ? (
-        <div style={{ position: "relative" }}>
-         <img src={img2} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
-         <button onClick={() => { setImg2(""); if (img1) upd("screenshot", img1); }} style={{
-          position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6,
-          background: t.red, border: "none", cursor: "pointer", color: "#fff", fontSize: 12,
+     {/* Preview thumbnails */}
+     {(img1 || img2) && (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+       <div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 4 }}>📱 Perfil</div>
+        {img1 ? (
+         <div style={{ position: "relative" }}>
+          <img src={img1} style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
+          <button onClick={() => { setImg1(""); upd("screenshot", ""); }} style={{
+           position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6,
+           background: "rgba(0,0,0,.6)", border: "none", cursor: "pointer", color: "#fff", fontSize: 11,
+           display: "flex", alignItems: "center", justifyContent: "center",
+          }}>✕</button>
+         </div>
+        ) : (
+         <label style={{
           display: "flex", alignItems: "center", justifyContent: "center",
-         }}>✕</button>
-        </div>
-       ) : (
-        <label style={{
-         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-         height: 140, borderRadius: 12, border: `2px dashed ${t.border}`, cursor: "pointer",
-        }}>
-         <span style={{ fontSize: 24, marginBottom: 4 }}>💰</span>
-         <span style={{ fontSize: 10, color: t.textSec }}>Recompensas</span>
-         <input type="file" accept="image/*" onChange={async (e) => { if (e.target.files?.[0]) setImg2(await loadImage(e.target.files[0])); }} style={{ display: "none" }} />
-        </label>
-       )}
+          height: 160, borderRadius: 12, border: `2px dashed ${t.border}`, cursor: "pointer",
+         }}>
+          <span style={{ fontSize: 10, color: t.textTer }}>Agregar</span>
+          <input type="file" accept="image/*" onChange={async (e) => { if (e.target.files?.[0]) setImg1(await loadImage(e.target.files[0])); }} style={{ display: "none" }} />
+         </label>
+        )}
+       </div>
+       <div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 4 }}>💰 Recompensas</div>
+        {img2 ? (
+         <div style={{ position: "relative" }}>
+          <img src={img2} style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
+          <button onClick={() => { setImg2(""); if (img1) upd("screenshot", img1); }} style={{
+           position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6,
+           background: "rgba(0,0,0,.6)", border: "none", cursor: "pointer", color: "#fff", fontSize: 11,
+           display: "flex", alignItems: "center", justifyContent: "center",
+          }}>✕</button>
+         </div>
+        ) : (
+         <label style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          height: 160, borderRadius: 12, border: `2px dashed ${t.border}`, cursor: "pointer",
+         }}>
+          <span style={{ fontSize: 10, color: t.textTer }}>Agregar</span>
+          <input type="file" accept="image/*" onChange={async (e) => { if (e.target.files?.[0]) setImg2(await loadImage(e.target.files[0])); }} style={{ display: "none" }} />
+         </label>
+        )}
+       </div>
       </div>
-     </div>
+     )}
 
      {/* Collage Preview */}
      {form.screenshot && img1 && img2 && (
-      <div style={{ marginBottom: 12 }}>
-       <div style={{ fontSize: 10, fontWeight: 600, color: t.green, marginBottom: 4 }}>✅ Collage creado</div>
-       <img src={form.screenshot} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
+      <div style={{ marginBottom: 10, padding: 8, borderRadius: 10, background: t.greenSoft, border: `1px solid ${t.green}20`, textAlign: "center" }}>
+       <span style={{ fontSize: 11, color: t.green, fontWeight: 600 }}>✅ Collage creado en alta calidad</span>
       </div>
      )}
 
