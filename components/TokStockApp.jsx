@@ -429,6 +429,7 @@ export default function App() {
      {tab === "reports" && <ReportsScreen accounts={accounts} t={t} dark={dark} />}
      {tab === "search" && <SearchScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} />}
      {tab === "goals" && <GoalsScreen accounts={accounts} t={t} dark={dark} goals={goals} saveGoals={async (g) => { setGoals(g); await db.setSetting("goals", g); }} />}
+     {tab === "broadcast" && <BroadcastScreen accounts={accounts} t={t} dark={dark} countries={countries} onBack={() => setTab("home")} />}
      {tab === "config" && (
       <ConfigScreen
        t={t} dark={dark} toggleTheme={toggleTheme}
@@ -531,88 +532,10 @@ export default function App() {
      )}
 
      {/* Broadcast button - Home only */}
+     {/* Broadcast button - Home only */}
      {tab === "home" && (
       <button
-       onClick={async () => {
-        const avail = accounts.filter(a => a.status === "available" && a.screenshot);
-        if (avail.length === 0) { notify("No hay cuentas disponibles con imagen", "error"); return; }
-
-        notify("Preparando imágenes...");
-
-        // Stamp text on each image using canvas
-        const files = [];
-        for (const a of avail) {
-         try {
-          const flag = countries.find(c => c.name === a.country)?.emoji || "";
-          const cats = (a.categories || []).join(", ");
-          const lines = [
-           `@${a.username}`,
-           `${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}`,
-           cats || "",
-           `Precio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}`,
-          ].filter(Boolean);
-
-          // Load image
-          const img = new Image();
-          await new Promise((resolve, reject) => {
-           img.onload = resolve;
-           img.onerror = reject;
-           img.src = a.screenshot;
-          });
-
-          const canvas = document.createElement("canvas");
-          const W = Math.max(img.width, 600);
-          const barH = 18 + lines.length * 22;
-          canvas.width = W;
-          canvas.height = img.height + barH;
-          const ctx = canvas.getContext("2d");
-
-          // Draw image
-          ctx.drawImage(img, 0, 0, W, img.height);
-
-          // Draw text bar at bottom
-          ctx.fillStyle = "rgba(0,0,0,.85)";
-          ctx.fillRect(0, img.height, W, barH);
-
-          ctx.fillStyle = "#fff";
-          ctx.font = "bold 16px -apple-system, sans-serif";
-          lines.forEach((line, i) => {
-           if (i === 0) ctx.font = "bold 18px -apple-system, sans-serif";
-           else if (i === 3) { ctx.fillStyle = "#4cd964"; ctx.font = "bold 16px -apple-system, sans-serif"; }
-           else { ctx.fillStyle = "#ccc"; ctx.font = "14px -apple-system, sans-serif"; }
-           ctx.fillText(line, 12, img.height + 20 + i * 22);
-          });
-
-          const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
-          files.push(new File([blob], `${a.username}.jpg`, { type: "image/jpeg" }));
-         } catch (e) { console.warn("Skip", a.username, e); }
-        }
-
-        if (files.length === 0) { notify("No se pudieron preparar las imágenes", "error"); return; }
-
-        // Also build full text for clipboard
-        const fullText = avail.map(a => {
-         const flag = countries.find(c => c.name === a.country)?.emoji || "";
-         const cats = (a.categories || []).join(", ");
-         return `*@${a.username}*\n${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}${cats ? `\n${cats}` : ""}\nPrecio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}\n${a.profileLink || ""}`;
-        }).join("\n\n───────────\n\n");
-
-        // Copy text to clipboard
-        try { await navigator.clipboard.writeText(fullText); } catch {}
-
-        // Share all images at once
-        if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
-         try {
-          await navigator.share({ files, title: `${files.length} cuentas disponibles` });
-          notify(`${files.length} cuentas compartidas`);
-          return;
-         } catch (e) { if (e.name === "AbortError") return; }
-        }
-
-        // Fallback
-        window.open(`https://wa.me/?text=${encodeURIComponent(fullText)}`, "_blank");
-        notify("Texto copiado · Imágenes no compatibles en este dispositivo");
-       }}
+       onClick={() => setTab("broadcast")}
        style={{
         position: "fixed", bottom: 20, right: 76,
         marginBottom: "env(safe-area-inset-bottom, 0px)",
@@ -812,7 +735,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v35</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v37</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -2034,54 +1957,80 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
   upd("categories", cur.includes(cat) ? cur.filter((c) => c !== cat) : [...cur, cat]);
  };
 
- const handleImageUpload = (e) => {
-  const file = e.target.files?.[0];
-  if (file) {
-   const reader = new FileReader();
-   reader.onload = (ev) => {
-    // Compress image to reduce DB size
-    const img = new Image();
-    img.onload = () => {
-     const canvas = document.createElement("canvas");
-     const MAX = 600;
-     let w = img.width, h = img.height;
-     if (w > MAX || h > MAX) {
-      if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-      else { w = Math.round(w * MAX / h); h = MAX; }
-     }
-     canvas.width = w;
-     canvas.height = h;
-     canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-     const compressed = canvas.toDataURL("image/jpeg", 0.6);
-     upd("screenshot", compressed);
-    };
-    img.src = ev.target.result;
+ const [img1, setImg1] = useState(account?.screenshot || "");
+ const [img2, setImg2] = useState("");
+
+ const loadImage = (file) => new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+   const img = new Image();
+   img.onload = () => {
+    const canvas = document.createElement("canvas");
+    const MAX = 600;
+    let w = img.width, h = img.height;
+    if (w > MAX || h > MAX) {
+     if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; }
+    }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    resolve(canvas.toDataURL("image/jpeg", 0.7));
    };
-   reader.readAsDataURL(file);
-  }
- };
+   img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+ });
+
+ const createCollage = useCallback(() => {
+  if (!img1 || !img2) return;
+  const imgA = new Image(); const imgB = new Image();
+  let loaded = 0;
+  const onLoad = () => {
+   loaded++;
+   if (loaded < 2) return;
+   const canvas = document.createElement("canvas");
+   const W = 800;
+   const hA = Math.round(imgA.height * (W / 2) / imgA.width);
+   const hB = Math.round(imgB.height * (W / 2) / imgB.width);
+   const H = Math.max(hA, hB);
+   canvas.width = W; canvas.height = H;
+   const ctx = canvas.getContext("2d");
+   ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+   ctx.drawImage(imgA, 0, (H - hA) / 2, W / 2, hA);
+   ctx.drawImage(imgB, W / 2, (H - hB) / 2, W / 2, hB);
+   const collage = canvas.toDataURL("image/jpeg", 0.75);
+   upd("screenshot", collage);
+  };
+  imgA.onload = onLoad; imgB.onload = onLoad;
+  imgA.src = img1; imgB.src = img2;
+ }, [img1, img2]);
+
+ useEffect(() => { if (img1 && img2) createCollage(); }, [img1, img2, createCollage]);
 
  // ─── AI Image Analysis ───
  const analyzeWithAI = async () => {
   const activeProvider = aiProviders.find((p) => p.active && p.key);
   if (!activeProvider) {
-   setAiError("No hay IA configurada. Ve a Config → Inteligencia Artificial.");
+   setAiError("No hay IA configurada. Ve a Ajustes → Inteligencia Artificial.");
    return;
   }
-  if (!form.screenshot) {
-   setAiError("Sube una imagen primero.");
+  // Use profile image (img1) for analysis, not the collage
+  const imageToAnalyze = img1 || form.screenshot;
+  if (!imageToAnalyze) {
+   setAiError("Sube la imagen del perfil primero.");
    return;
   }
 
   setAnalyzing(true);
   setAiError("");
-  const base64 = form.screenshot.split(",")[1];
+  const base64 = imageToAnalyze.split(",")[1];
   
   let provider = "openai";
   if (activeProvider.name.includes("Gemini")) provider = "gemini";
   if (activeProvider.name.includes("Claude")) provider = "claude";
 
   try {
+   const controller = new AbortController();
+   const timeout = setTimeout(() => controller.abort(), 30000);
    const res = await fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2090,8 +2039,12 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
      apiKey: activeProvider.key,
      provider: provider,
     }),
+    signal: controller.signal,
    });
+   clearTimeout(timeout);
+   if (!res.ok) throw new Error(`Error ${res.status}`);
    const data = await res.json();
+   if (data.error) throw new Error(data.error);
    
    if (data.error) throw new Error(data.error);
    
@@ -2104,7 +2057,11 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
    if (data.followers) setForm((f) => ({ ...f, followers: data.followers }));
    if (data.niche) setForm((f) => ({ ...f, niche: data.niche }));
   } catch (e) {
-   setAiError("Error IA: " + (e.message || "No se pudo analizar"));
+   if (e.name === "AbortError") {
+    setAiError("La IA tardó demasiado. Intenta de nuevo.");
+   } else {
+    setAiError("Error: " + (e.message || "No se pudo analizar"));
+   }
   }
   setAnalyzing(false);
  };
@@ -2157,81 +2114,118 @@ function AccountForm({ t, dark, countries, categories, aiProviders, account, onS
     </div>
    )}
 
-   {/* Step 1: Image */}
+   {/* Step 1: Images + Collage */}
    {step === 1 && (
     <div>
-     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Captura de Pantalla</div>
-     <div style={{ fontSize: 12, color: t.textSec, marginBottom: 16 }}>
-      Sube un screenshot del perfil TikTok (opcional)
+     <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Capturas de Pantalla</div>
+     <div style={{ fontSize: 12, color: t.textSec, marginBottom: 14 }}>
+      Sube la captura del perfil y del programa de recompensas
      </div>
-     {form.screenshot ? (
-      <div style={{ position: "relative", marginBottom: 16 }}>
-       <img src={form.screenshot} style={{
-        width: "100%", height: 200, objectFit: "cover", borderRadius: 16,
-        border: `1px solid ${t.border}`,
-       }} />
-       <button
-        onClick={() => upd("screenshot", "")}
-        style={{
-         position: "absolute", top: 8, right: 8,
-         background: t.red, border: "none", cursor: "pointer",
-         width: 28, height: 28, borderRadius: 8,
-         display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
-        }}
-       >{Icons.x}</button>
-       {/* AI Analyze Button */}
+
+     {/* Two image upload boxes */}
+     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+      {/* Image 1: Profile */}
+      <div>
+       <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 4 }}>Perfil</div>
+       {img1 ? (
+        <div style={{ position: "relative" }}>
+         <img src={img1} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
+         <button onClick={() => { setImg1(""); upd("screenshot", ""); }} style={{
+          position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6,
+          background: t.red, border: "none", cursor: "pointer", color: "#fff", fontSize: 12,
+          display: "flex", alignItems: "center", justifyContent: "center",
+         }}>✕</button>
+        </div>
+       ) : (
+        <label style={{
+         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+         height: 140, borderRadius: 12, border: `2px dashed ${t.border}`, cursor: "pointer",
+        }}>
+         <span style={{ fontSize: 24, marginBottom: 4 }}>📱</span>
+         <span style={{ fontSize: 10, color: t.textSec }}>Perfil</span>
+         <input type="file" accept="image/*" onChange={async (e) => { if (e.target.files?.[0]) setImg1(await loadImage(e.target.files[0])); }} style={{ display: "none" }} />
+        </label>
+       )}
+      </div>
+
+      {/* Image 2: Rewards */}
+      <div>
+       <div style={{ fontSize: 10, fontWeight: 600, color: t.textSec, marginBottom: 4 }}>Recompensas</div>
+       {img2 ? (
+        <div style={{ position: "relative" }}>
+         <img src={img2} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
+         <button onClick={() => { setImg2(""); if (img1) upd("screenshot", img1); }} style={{
+          position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6,
+          background: t.red, border: "none", cursor: "pointer", color: "#fff", fontSize: 12,
+          display: "flex", alignItems: "center", justifyContent: "center",
+         }}>✕</button>
+        </div>
+       ) : (
+        <label style={{
+         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+         height: 140, borderRadius: 12, border: `2px dashed ${t.border}`, cursor: "pointer",
+        }}>
+         <span style={{ fontSize: 24, marginBottom: 4 }}>💰</span>
+         <span style={{ fontSize: 10, color: t.textSec }}>Recompensas</span>
+         <input type="file" accept="image/*" onChange={async (e) => { if (e.target.files?.[0]) setImg2(await loadImage(e.target.files[0])); }} style={{ display: "none" }} />
+        </label>
+       )}
+      </div>
+     </div>
+
+     {/* Collage Preview */}
+     {form.screenshot && img1 && img2 && (
+      <div style={{ marginBottom: 12 }}>
+       <div style={{ fontSize: 10, fontWeight: 600, color: t.green, marginBottom: 4 }}>✅ Collage creado</div>
+       <img src={form.screenshot} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 12, border: `1px solid ${t.border}` }} />
+      </div>
+     )}
+
+     {/* Single image mode (only profile uploaded) */}
+     {img1 && !img2 && !form.screenshot && (
+      <div style={{ fontSize: 10, color: t.textSec, marginBottom: 8 }}>
+       Sube la segunda imagen para crear el collage, o continúa con una sola
+      </div>
+     )}
+
+     {/* AI Analyze */}
+     {(img1 || form.screenshot) && (
+      <>
        <button
         onClick={analyzeWithAI}
         disabled={analyzing}
         style={{
-         width: "100%", marginTop: 10, padding: 12, borderRadius: 10,
+         width: "100%", marginBottom: 8, padding: 12, borderRadius: 10,
          border: "none", cursor: analyzing ? "wait" : "pointer",
-         background: analyzing
-          ? t.bgInput
-          : `linear-gradient(135deg, #8b5cf6, #6d28d9)`,
-         color: "#fff", fontSize: 13, fontWeight: 700,
-         opacity: analyzing ? 0.7 : 1,
+         background: analyzing ? t.bgInput : `linear-gradient(135deg, #8b5cf6, #6d28d9)`,
+         color: "#fff", fontSize: 13, fontWeight: 700, opacity: analyzing ? 0.7 : 1,
         }}
        >
         {analyzing ? "Analizando..." : "Analizar con IA"}
        </button>
        {aiError && (
-        <div style={{
-         marginTop: 8, fontSize: 12, color: t.red,
-         background: t.redSoft, padding: 8, borderRadius: 8,
-        }}>
-         {aiError}
+        <div style={{ marginBottom: 8, fontSize: 12, color: t.red, background: t.redSoft, padding: 8, borderRadius: 8 }}>{aiError}</div>
+       )}
+       {!analyzing && form.username && (
+        <div style={{ marginBottom: 8, fontSize: 11, color: t.green, background: t.greenSoft, padding: 8, borderRadius: 8 }}>
+         ✅ @{form.username} · {fmtK(form.followers)} seg. · {form.niche || "—"}
         </div>
        )}
-       {!analyzing && form.username && form.screenshot && (
-        <div style={{
-         marginTop: 8, fontSize: 11, color: t.green,
-         background: t.greenSoft, padding: 8, borderRadius: 8,
-        }}>
-         ✅ Datos extraídos: @{form.username} • {fmtK(form.followers)} seg. • {form.niche || "—"}
-        </div>
-       )}
-      </div>
-     ) : (
-      <label style={{
-       display: "flex", flexDirection: "column", alignItems: "center",
-       padding: 40, borderRadius: 16, border: `2px dashed ${t.border}`,
-       cursor: "pointer", marginBottom: 16,
-      }}>
-       <div style={{ fontSize: 36, marginBottom: 8 }}>📷</div>
-       <div style={{ fontSize: 13, fontWeight: 600 }}>Toca para subir imagen</div>
-       <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
-      </label>
+      </>
      )}
+
      <div style={{ display: "flex", gap: 8 }}>
       <button onClick={onCancel} style={{
        flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
        background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
       }}>Cancelar</button>
-      <button onClick={() => setStep(2)} style={{
+      <button onClick={() => {
+       if (!form.screenshot && img1) upd("screenshot", img1);
+       setStep(2);
+      }} style={{
        flex: 1, padding: 12, borderRadius: 10, border: "none",
        background: t.accent, cursor: "pointer", color: "#fff", fontWeight: 700,
-      }}>{form.screenshot ? "Siguiente" : "Saltar →"}</button>
+      }}>{img1 ? "Siguiente" : "Saltar →"}</button>
      </div>
     </div>
    )}
@@ -2799,6 +2793,107 @@ function GoalsScreen({ accounts, t, dark, goals, saveGoals }) {
      <div style={{ fontSize: 36, marginBottom: 8 }}>🎯</div>
      <div style={{ fontSize: 13, color: t.textSec }}>Crea tu primera meta</div>
      <div style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>La ganancia se cuenta desde el día que la crees</div>
+    </div>
+   )}
+  </div>
+ );
+}
+
+// ─── BROADCAST SCREEN ───
+function BroadcastScreen({ accounts, t, dark, countries, onBack }) {
+ const [shared, setShared] = useState([]);
+ const avail = accounts.filter(a => a.status === "available");
+
+ const shareAccount = async (a) => {
+  const flag = countries.find(c => c.name === a.country)?.emoji || "";
+  const cats = (a.categories || []).join(", ");
+  const text = `*@${a.username}*\n${fmtK(a.followers)} seg. · ${flag} ${a.country || "—"}${cats ? `\n${cats}` : ""}\nPrecio: ${fmt(a.estimatedSalePrice || a.purchasePrice)}\n${a.profileLink || ""}`;
+
+  // Try sharing image + text
+  if (a.screenshot && navigator.share && navigator.canShare) {
+   try {
+    const res = await fetch(a.screenshot);
+    const blob = await res.blob();
+    const file = new File([blob], `${a.username}.jpg`, { type: "image/jpeg" });
+    if (navigator.canShare({ files: [file], text })) {
+     await navigator.share({ files: [file], text, title: `@${a.username}` });
+     setShared(prev => [...prev, a.id]);
+     return;
+    }
+   } catch (e) { if (e.name === "AbortError") return; }
+  }
+
+  // Fallback: copy text + open WhatsApp
+  try { await navigator.clipboard.writeText(text); } catch {}
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  setShared(prev => [...prev, a.id]);
+ };
+
+ return (
+  <div style={{ padding: "8px 16px 0" }}>
+   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+    <button onClick={onBack} style={{
+     background: t.bgInput, border: "none", cursor: "pointer",
+     width: 36, height: 36, borderRadius: 10,
+     display: "flex", alignItems: "center", justifyContent: "center", color: t.text,
+    }}>←</button>
+    <div>
+     <div style={{ fontSize: 18, fontWeight: 800 }}>Difusión</div>
+     <div style={{ fontSize: 11, color: t.textSec }}>{avail.length} cuentas disponibles · {shared.length} enviadas</div>
+    </div>
+   </div>
+
+   {/* Progress */}
+   {shared.length > 0 && (
+    <div style={{ marginBottom: 12 }}>
+     <div style={{ width: "100%", height: 4, borderRadius: 2, background: t.bgInput }}>
+      <div style={{ width: `${(shared.length / avail.length) * 100}%`, height: "100%", borderRadius: 2, background: "#25D366", transition: "width .3s" }} />
+     </div>
+     <div style={{ fontSize: 10, color: t.textSec, marginTop: 4, textAlign: "right" }}>{shared.length}/{avail.length}</div>
+    </div>
+   )}
+
+   {avail.map(a => {
+    const done = shared.includes(a.id);
+    const flag = countries.find(c => c.name === a.country)?.emoji || "";
+    return (
+     <div key={a.id} style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: 10, marginBottom: 6, borderRadius: 12,
+      background: done ? t.greenSoft : t.bgCard,
+      border: `1px solid ${done ? t.green + "30" : t.border}`,
+      opacity: done ? 0.6 : 1,
+     }}>
+      <div style={{
+       width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+       background: a.screenshot ? `url(${a.screenshot}) center/cover` : t.bgInput,
+      }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+       <div style={{ fontWeight: 700, fontSize: 13, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{a.username}</div>
+       <div style={{ fontSize: 10, color: t.textSec, whiteSpace: "nowrap" }}>{fmtK(a.followers)} · {flag} {a.country || "—"} · {fmt(a.estimatedSalePrice || a.purchasePrice)}</div>
+      </div>
+      <button
+       onClick={() => !done && shareAccount(a)}
+       style={{
+        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+        border: "none", cursor: done ? "default" : "pointer",
+        background: done ? t.green : "#25D366",
+        display: "flex", alignItems: "center", justifyContent: "center",
+       }}
+      >
+       {done ? (
+        <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>✓</span>
+       ) : (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+       )}
+      </button>
+     </div>
+    );
+   })}
+
+   {avail.length === 0 && (
+    <div style={{ textAlign: "center", padding: 32, color: t.textSec, fontSize: 13 }}>
+     No hay cuentas disponibles para difundir
     </div>
    )}
   </div>
