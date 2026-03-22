@@ -750,7 +750,7 @@ function HomeScreen({ accounts, t, dark, onSelect, goals }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v39</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v40</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -2882,6 +2882,8 @@ function GoalsScreen({ accounts, t, dark, goals, saveGoals }) {
 function WarehouseScreen({ t, dark, emailWarehouse, saveWarehouse }) {
  const [newEmail, setNewEmail] = useState("");
  const [newPass, setNewPass] = useState("");
+ const [bulkText, setBulkText] = useState("");
+ const [showBulk, setShowBulk] = useState(false);
  const [filter, setFilter] = useState("all");
 
  const addEmail = () => {
@@ -2889,6 +2891,35 @@ function WarehouseScreen({ t, dark, emailWarehouse, saveWarehouse }) {
   if (emailWarehouse.find(e => e.email.toLowerCase() === newEmail.toLowerCase())) { alert("Este correo ya está en la bodega"); return; }
   saveWarehouse([...emailWarehouse, { email: newEmail, password: newPass, used: false, usedBy: "", addedDate: today() }]);
   setNewEmail(""); setNewPass("");
+ };
+
+ const bulkImport = () => {
+  if (!bulkText.trim()) return;
+  const lines = bulkText.split("\n").filter(l => l.trim() && !l.trim().startsWith("---"));
+  const newEmails = [];
+  for (const line of lines) {
+   // Parse formats: "Account: email:password" or "email:password" or just "email"
+   let email = "", password = "";
+   const cleaned = line.replace(/^Account:\s*/i, "").trim();
+   if (cleaned.includes(":")) {
+    const parts = cleaned.split(":");
+    email = parts[0].trim();
+    password = parts.slice(1).join(":").trim();
+   } else {
+    email = cleaned;
+   }
+   if (email && email.includes("@") && !emailWarehouse.find(e => e.email.toLowerCase() === email.toLowerCase()) && !newEmails.find(e => e.email.toLowerCase() === email.toLowerCase())) {
+    newEmails.push({ email, password, used: false, usedBy: "", addedDate: today() });
+   }
+  }
+  if (newEmails.length > 0) {
+   saveWarehouse([...emailWarehouse, ...newEmails]);
+   setBulkText("");
+   setShowBulk(false);
+   alert(`${newEmails.length} correos importados`);
+  } else {
+   alert("No se encontraron correos nuevos para importar");
+  }
  };
 
  const removeEmail = (email) => saveWarehouse(emailWarehouse.filter(e => e.email !== email));
@@ -2900,21 +2931,47 @@ function WarehouseScreen({ t, dark, emailWarehouse, saveWarehouse }) {
 
  return (
   <div style={{ padding: "8px 16px 0" }}>
-   <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Bodega de Correos</div>
+   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+    <div style={{ fontSize: 20, fontWeight: 800 }}>Bodega de Correos</div>
+    <button onClick={() => setShowBulk(!showBulk)} style={{
+     padding: "5px 10px", borderRadius: 8, border: `1px solid ${t.border}`,
+     background: showBulk ? t.accentSoft : t.bgCardAlt, cursor: "pointer",
+     fontSize: 10, fontWeight: 600, color: showBulk ? t.accent : t.textSec,
+    }}>{showBulk ? "Individual" : "Importar masivo"}</button>
+   </div>
    <div style={{ fontSize: 11, color: t.textSec, marginBottom: 14 }}>{availCount} disponibles · {usedCount} usados · {emailWarehouse.length} total</div>
 
-   {/* Add new email */}
-   <Card t={t} style={{ marginBottom: 12, padding: 12 }}>
-    <input placeholder="correo@ejemplo.com" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 6, outline: "none" }} />
-    <input placeholder="Contraseña (opcional)" value={newPass} onChange={e => setNewPass(e.target.value)}
-     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 8, outline: "none" }} />
-    <button onClick={addEmail} disabled={!newEmail} style={{
-     width: "100%", padding: 10, borderRadius: 8, border: "none",
-     background: !newEmail ? t.bgInput : t.accent, color: !newEmail ? t.textTer : "#fff",
-     fontSize: 13, fontWeight: 700, cursor: "pointer",
-    }}>+ Agregar correo</button>
-   </Card>
+   {/* Bulk import */}
+   {showBulk ? (
+    <Card t={t} style={{ marginBottom: 12, padding: 12 }}>
+     <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Importar masivo</div>
+     <div style={{ fontSize: 10, color: t.textSec, marginBottom: 8 }}>Pega tus correos en formato:<br/>Account: email:contraseña</div>
+     <textarea
+      placeholder={"Account: correo@mail.com:contraseña123\n-----\nAccount: otro@mail.com:pass456"}
+      value={bulkText} onChange={e => setBulkText(e.target.value)}
+      rows={8}
+      style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 12, fontFamily: "monospace", marginBottom: 8, outline: "none", resize: "vertical" }}
+     />
+     <button onClick={bulkImport} disabled={!bulkText.trim()} style={{
+      width: "100%", padding: 10, borderRadius: 8, border: "none",
+      background: !bulkText.trim() ? t.bgInput : t.accent, color: !bulkText.trim() ? t.textTer : "#fff",
+      fontSize: 13, fontWeight: 700, cursor: "pointer",
+     }}>Importar correos</button>
+    </Card>
+   ) : (
+    /* Add single email */
+    <Card t={t} style={{ marginBottom: 12, padding: 12 }}>
+     <input placeholder="correo@ejemplo.com" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+      style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 6, outline: "none" }} />
+     <input placeholder="Contraseña (opcional)" value={newPass} onChange={e => setNewPass(e.target.value)}
+      style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 8, outline: "none" }} />
+     <button onClick={addEmail} disabled={!newEmail} style={{
+      width: "100%", padding: 10, borderRadius: 8, border: "none",
+      background: !newEmail ? t.bgInput : t.accent, color: !newEmail ? t.textTer : "#fff",
+      fontSize: 13, fontWeight: 700, cursor: "pointer",
+     }}>+ Agregar correo</button>
+    </Card>
+   )}
 
    {/* Filters */}
    <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
