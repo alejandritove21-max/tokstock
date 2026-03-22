@@ -148,6 +148,7 @@ export default function App() {
  const [notification, setNotification] = useState(null);
  const [whatsappTemplate, setWhatsappTemplate] = useState("");
  const [menuOpen, setMenuOpen] = useState(false);
+ const [goals, setGoals] = useState([]);
 
  const t = getTheme(dark);
 
@@ -171,6 +172,8 @@ export default function App() {
      if (savedTheme !== null) setDark(savedTheme);
      const savedTemplate = await db.getSetting("whatsappTemplate");
      if (savedTemplate) setWhatsappTemplate(savedTemplate);
+     const savedGoals = await db.getSetting("goals");
+     if (savedGoals) setGoals(savedGoals);
      // Screenshots for available accounts load with the data
      // Sold accounts load screenshot on demand when tapped
     }
@@ -394,14 +397,14 @@ export default function App() {
        countries={countries}
        onSelect={selectAccount}
        onAdd={() => { setEditingAccount(null); setShowForm(true); }}
-       onBulkSell={async (ids, totalPrice) => {
+       onBulkSell={async (ids, totalPrice, buyer) => {
         setSyncing(true);
         try {
          const priceEach = totalPrice / ids.length;
          for (const id of ids) {
           const acc = accounts.find((a) => a.id === id);
           const profit = priceEach - (acc.purchasePrice || 0);
-          await db.updateAccount(id, { status: "sold", realSalePrice: priceEach, profit, soldDate: today() });
+          await db.updateAccount(id, { status: "sold", realSalePrice: priceEach, profit, soldDate: today(), buyer: buyer || "" });
          }
          const accs = await db.getAccounts();
          setAccounts(accs);
@@ -425,6 +428,7 @@ export default function App() {
      )}
      {tab === "reports" && <ReportsScreen accounts={accounts} t={t} dark={dark} />}
      {tab === "search" && <SearchScreen accounts={accounts} t={t} dark={dark} onSelect={selectAccount} />}
+     {tab === "goals" && <GoalsScreen accounts={accounts} t={t} dark={dark} goals={goals} saveGoals={async (g) => { setGoals(g); await db.setSetting("goals", g); }} />}
      {tab === "config" && (
       <ConfigScreen
        t={t} dark={dark} toggleTheme={toggleTheme}
@@ -479,6 +483,7 @@ export default function App() {
           { id: "stock", label: "Stock", icon: "📦" },
           { id: "reports", label: "Reportes", icon: "📊" },
           { id: "search", label: "Buscar", icon: "🔍" },
+          { id: "goals", label: "Metas", icon: "🎯" },
           { id: "config", label: "Config", icon: "⚙️" },
          ].map((item) => {
           const active = tab === item.id;
@@ -703,7 +708,7 @@ function HomeScreen({ accounts, t, dark, onSelect }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
      <div style={{ fontSize: 11, color: t.textSec, textTransform: "capitalize" }}>{todayDate}</div>
      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 9, color: t.textTer }}>v28</span>
+      <span style={{ fontSize: 9, color: t.textTer }}>v29</span>
       <div style={{
        padding: "3px 8px", borderRadius: 12,
        background: dbConnected ? t.greenSoft : t.redSoft,
@@ -979,6 +984,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
  const [selected, setSelected] = useState([]);
  const [showBulkSell, setShowBulkSell] = useState(false);
  const [bulkPrice, setBulkPrice] = useState("");
+ const [bulkBuyer, setBulkBuyer] = useState("");
  const [confirmAction, setConfirmAction] = useState(null);
 
  const allCategories = [...new Set(accounts.flatMap(a => a.categories || []))];
@@ -1224,21 +1230,6 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
        Descalificar
       </button>
      </div>
-     <button onClick={() => {
-      const text = selectedAccounts.filter(a => a.status === "available").map(a => {
-       const flag = countries.find(c => c.name === a.country)?.emoji || "";
-       const cats = (a.categories || []).join(", ") || "—";
-       return `*CUENTA DISPONIBLE*\n───────────────\nRegión: ${flag} ${a.country || "—"}\nCategoría: ${cats}\nSeguidores: ${fmtK(a.followers)}\nNicho: ${a.niche || "—"}\nPrecio: ${fmt(a.estimatedSalePrice || 0)}\n───────────────`;
-      }).join("\n\n");
-      if (text) { navigator.clipboard.writeText(text); alert(`${selectedAccounts.filter(a => a.status === "available").length} cuentas copiadas para revendedores`); }
-      else { alert("No hay cuentas disponibles seleccionadas"); }
-     }} style={{
-      width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${t.border}`,
-      background: t.bgCard, cursor: "pointer",
-      color: t.text, fontSize: 11, fontWeight: 600,
-     }}>
-      Copiar para revendedores
-     </button>
     </div>
    )}
 
@@ -1254,12 +1245,19 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
       maxWidth: 360, width: "100%", border: `1px solid ${t.border}`,
      }}>
       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Venta en Lote</div>
-      <div style={{ fontSize: 12, color: t.textSec, marginBottom: 4 }}>
-       {selected.length} cuenta{selected.length !== 1 ? "s" : ""} seleccionada{selected.length !== 1 ? "s" : ""}
+      <div style={{ fontSize: 12, color: t.textSec, marginBottom: 12 }}>
+       {selected.length} cuenta{selected.length !== 1 ? "s" : ""} · Costo: {fmt(selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0))}
       </div>
-      <div style={{ fontSize: 11, color: t.textSec, marginBottom: 16 }}>
-       Costo total de compra: {fmt(selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0))}
-      </div>
+      <input
+       type="text" placeholder="¿A quién se las vendes?"
+       value={bulkBuyer} onChange={(e) => setBulkBuyer(e.target.value)}
+       style={{
+        width: "100%", padding: 12, borderRadius: 10,
+        border: `1px solid ${t.border}`, background: t.bgInput,
+        color: t.text, fontSize: 14,
+        marginBottom: 8, outline: "none",
+       }}
+      />
       <input
        type="number" placeholder="Precio TOTAL de venta ($)"
        value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)}
@@ -1271,34 +1269,22 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
        }}
       />
       {bulkPrice && (
-       <div style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
-         <span style={{ color: t.textSec }}>Precio por cuenta:</span>
+       <div style={{ marginBottom: 12, fontSize: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+         <span style={{ color: t.textSec }}>Precio/cuenta:</span>
          <span style={{ fontWeight: 700 }}>{fmt(Number(bulkPrice) / selected.length)}</span>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
          <span style={{ color: t.textSec }}>Ganancia total:</span>
-         <span style={{
-          fontWeight: 700,
-          color: (Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)) >= 0 ? t.green : t.red,
-         }}>
+         <span style={{ fontWeight: 700, color: (Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)) >= 0 ? t.green : t.red }}>
           {fmt(Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0))}
-         </span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
-         <span style={{ color: t.textSec }}>Ganancia por cuenta:</span>
-         <span style={{
-          fontWeight: 700,
-          color: ((Number(bulkPrice) / selected.length) - (selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0) / selected.length)) >= 0 ? t.green : t.red,
-         }}>
-          {fmt((Number(bulkPrice) - selectedAccounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)) / selected.length)}
          </span>
         </div>
        </div>
       )}
       <div style={{ display: "flex", gap: 8 }}>
        <button
-        onClick={() => { setShowBulkSell(false); setBulkPrice(""); }}
+        onClick={() => { setShowBulkSell(false); setBulkPrice(""); setBulkBuyer(""); }}
         style={{
          flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${t.border}`,
          background: t.bgInput, cursor: "pointer", color: t.textSec, fontWeight: 600,
@@ -1307,9 +1293,15 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
        <button
         onClick={() => {
          if (bulkPrice && Number(bulkPrice) > 0) {
-          onBulkSell(selected, Number(bulkPrice));
+          // Copy account data for buyer
+          const buyerData = selectedAccounts.map(a => {
+           return `*@${a.username}*\nEmail: ${a.email || "—"}\nContraseña TikTok: ${a.tiktokPassword || "—"}\nContraseña Email: ${a.emailPasswordSame ? "(Misma)" : (a.emailPassword || "—")}\nLink: ${a.profileLink || "—"}`;
+          }).join("\n\n───────────────\n\n");
+          navigator.clipboard.writeText(buyerData);
+          onBulkSell(selected, Number(bulkPrice), bulkBuyer);
           setShowBulkSell(false);
           setBulkPrice("");
+          setBulkBuyer("");
           exitSelectMode();
          }
         }}
@@ -1317,7 +1309,7 @@ function StockScreen({ accounts, t, dark, onSelect, onAdd, onBulkSell, onBulkDis
          flex: 1, padding: 12, borderRadius: 10, border: "none",
          background: t.green, cursor: "pointer", color: "#fff", fontWeight: 700,
         }}
-       >Confirmar Venta</button>
+       >Vender y copiar</button>
       </div>
      </div>
     </div>
@@ -2356,7 +2348,11 @@ function ReportsScreen({ accounts, t, dark }) {
    const wd = accounts.filter((a) => a.status === "disqualified" && a.disqualifiedDate && new Date(a.disqualifiedDate) >= start && new Date(a.disqualifiedDate) < end);
    return { label: `S${w + 1}`, net: ws.reduce((s, a) => s + (a.profit || 0), 0) - wd.reduce((s, a) => s + (a.purchasePrice || 0), 0) };
   });
-  return { totalRevenue, totalProfit, totalLoss, totalInvested, netProfit, avgProfit, soldCount: sold30.length, disqCount: disq30.length, weeks, addedCount: bought30.length };
+  // Top buyer
+  const buyerMap = {};
+  sold30.forEach(a => { if (a.buyer) { buyerMap[a.buyer] = (buyerMap[a.buyer] || 0) + 1; } });
+  const topBuyer = Object.entries(buyerMap).sort((a, b) => b[1] - a[1])[0] || null;
+  return { totalRevenue, totalProfit, totalLoss, totalInvested, netProfit, avgProfit, soldCount: sold30.length, disqCount: disq30.length, weeks, addedCount: bought30.length, topBuyer };
  }, [accounts]);
 
  // ─ Quarterly: last 90 days
@@ -2557,6 +2553,7 @@ function ReportsScreen({ accounts, t, dark }) {
       <Stat label="Descalificadas" value={monthlyData.disqCount} />
       <Stat label="Agregadas" value={monthlyData.addedCount} />
       <Stat label="Promedio/cuenta" value={fmt(monthlyData.avgProfit)} color={t.green} />
+      {monthlyData.topBuyer && <Stat label="Top comprador" value={`${monthlyData.topBuyer[0]} (${monthlyData.topBuyer[1]})`} color={t.accent} />}
      </Card>
     </>
    )}
@@ -2584,6 +2581,89 @@ function ReportsScreen({ accounts, t, dark }) {
       <Stat label="Peor mes" value={`${quarterData.worst.label}: ${fmt(quarterData.worst.net)}`} color={t.red} />
      </Card>
     </>
+   )}
+  </div>
+ );
+}
+
+// ─── GOALS SCREEN ───
+function GoalsScreen({ accounts, t, dark, goals, saveGoals }) {
+ const [newGoalName, setNewGoalName] = useState("");
+ const [newGoalAmount, setNewGoalAmount] = useState("");
+
+ const totalProfit = accounts.filter(a => a.status === "sold").reduce((s, a) => s + (a.profit || 0), 0);
+ const profit30 = accounts.filter(a => a.status === "sold" && a.soldDate && daysAgo(a.soldDate, 30)).reduce((s, a) => s + (a.profit || 0), 0);
+
+ const addGoal = () => {
+  if (!newGoalName || !newGoalAmount) return;
+  const g = { id: uid(), name: newGoalName, amount: Number(newGoalAmount), created: today() };
+  saveGoals([...goals, g]);
+  setNewGoalName(""); setNewGoalAmount("");
+ };
+
+ const removeGoal = (id) => saveGoals(goals.filter(g => g.id !== id));
+
+ return (
+  <div style={{ padding: "8px 16px 0" }}>
+   <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 14 }}>🎯 Metas</div>
+
+   {/* Current earnings summary */}
+   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+    <Card t={t} style={{ padding: 12, textAlign: "center" }}>
+     <div style={{ fontSize: 10, color: t.textSec }}>Ganancia total</div>
+     <div style={{ fontSize: 18, fontWeight: 800, color: t.green, marginTop: 2 }}>{fmt(totalProfit)}</div>
+    </Card>
+    <Card t={t} style={{ padding: 12, textAlign: "center" }}>
+     <div style={{ fontSize: 10, color: t.textSec }}>Ganancia 30d</div>
+     <div style={{ fontSize: 18, fontWeight: 800, color: t.green, marginTop: 2 }}>{fmt(profit30)}</div>
+    </Card>
+   </div>
+
+   {/* Add new goal */}
+   <Card t={t} style={{ marginBottom: 16, padding: 14 }}>
+    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Nueva meta</div>
+    <input placeholder="Nombre (ej: iPhone, Laptop...)" value={newGoalName} onChange={e => setNewGoalName(e.target.value)}
+     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 8, outline: "none" }} />
+    <input type="number" placeholder="Monto ($)" value={newGoalAmount} onChange={e => setNewGoalAmount(e.target.value)}
+     style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgInput, color: t.text, fontSize: 14, marginBottom: 10, outline: "none" }} />
+    <button onClick={addGoal} style={{
+     width: "100%", padding: 10, borderRadius: 8, border: "none",
+     background: t.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+    }}>Agregar meta</button>
+   </Card>
+
+   {/* Goals list */}
+   {goals.map(g => {
+    const progress = Math.min((totalProfit / g.amount) * 100, 100);
+    const completed = totalProfit >= g.amount;
+    return (
+     <Card t={t} key={g.id} style={{ marginBottom: 10, padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+       <div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{completed ? "✅ " : ""}{g.name}</div>
+        <div style={{ fontSize: 11, color: t.textSec, marginTop: 1 }}>{fmt(totalProfit)} / {fmt(g.amount)}</div>
+       </div>
+       <button onClick={() => removeGoal(g.id)} style={{ background: "none", border: "none", cursor: "pointer", color: t.red, fontSize: 12 }}>✕</button>
+      </div>
+      <div style={{ width: "100%", height: 8, borderRadius: 4, background: t.bgInput, overflow: "hidden" }}>
+       <div style={{
+        width: `${progress}%`, height: "100%", borderRadius: 4,
+        background: completed ? t.green : `linear-gradient(90deg, ${t.accent}, ${t.blue})`,
+        transition: "width .5s ease",
+       }} />
+      </div>
+      <div style={{ fontSize: 10, color: completed ? t.green : t.textSec, marginTop: 4, textAlign: "right", fontWeight: 600 }}>
+       {completed ? "¡Meta alcanzada!" : `${progress.toFixed(0)}%`}
+      </div>
+     </Card>
+    );
+   })}
+
+   {goals.length === 0 && (
+    <Card t={t} style={{ textAlign: "center", padding: 24 }}>
+     <div style={{ fontSize: 13, color: t.textSec }}>No tienes metas configuradas</div>
+     <div style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>Agrega una meta arriba para trackear tu progreso</div>
+    </Card>
    )}
   </div>
  );
