@@ -303,6 +303,7 @@ export const useStore = create<AppState>((set, get) => ({
       })
       const json = await res.json()
       const results = json.results || {}
+      console.log("[TokStock] sendMulti results:", JSON.stringify(json))
 
       // Update messageMap for each channel
       let updatedChannels = whapiConfig.channels.map(ch => ({ ...ch, messageMap: { ...ch.messageMap } }))

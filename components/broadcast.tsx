@@ -308,6 +308,28 @@ export function Broadcast() {
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {sending ? "Enviando..." : `Enviar todas (${activeChannels.length})`}
           </button>
+          {/* Test button — sends "Test" text to all channels */}
+          <button onClick={async () => {
+            try {
+              const res = await fetch("/api/whapi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "sendMulti",
+                  token: whapiConfig.token,
+                  channelIds: activeChannels.map(ch => ch.id),
+                  caption: "🧪 Test desde TokStock - " + new Date().toLocaleTimeString(),
+                }),
+              })
+              const json = await res.json()
+              const ok = Object.values(json.results || {}).filter(Boolean).length
+              const fail = Object.values(json.results || {}).filter(v => !v).length
+              notify(`Test: ${ok} enviado(s), ${fail} fallido(s)`)
+              if (json.debug) console.log("[TokStock] Test debug:", JSON.stringify(json.debug))
+            } catch (e: any) { notify(`Error: ${e.message}`, "error") }
+          }} className="flex items-center justify-center rounded-xl bg-secondary px-3 py-3 text-xs font-semibold text-foreground">
+            🧪
+          </button>
           {totalTracked > 0 && (
             <>
               <button onClick={() => { setSelectMode(!selectMode); setSelected([]) }}

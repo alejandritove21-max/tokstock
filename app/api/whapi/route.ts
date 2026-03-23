@@ -91,8 +91,9 @@ export async function POST(req: NextRequest) {
       if (!Array.isArray(channelIds) || channelIds.length === 0) {
         return NextResponse.json({ error: "channelIds array required" }, { status: 400 })
       }
-      const results: Record<string, string | null> = {}
-      for (const chId of channelIds) {
+      const results: Record<string, any> = {}
+      for (let i = 0; i < channelIds.length; i++) {
+        const chId = channelIds[i]
         try {
           let res: Response
           if (imageBase64) {
@@ -109,14 +110,22 @@ export async function POST(req: NextRequest) {
             })
           }
           const json = await res.json()
-          results[chId] = extractMessageId(json)
-          // Wait between sends to avoid rate limiting
-          await new Promise(r => setTimeout(r, 1500))
-        } catch {
-          results[chId] = null
+          const msgId = extractMessageId(json)
+          results[chId] = { msgId, status: res.status, error: json.error || null }
+          // Wait between sends
+          if (i < channelIds.length - 1) {
+            await new Promise(r => setTimeout(r, 2000))
+          }
+        } catch (e: any) {
+          results[chId] = { msgId: null, error: e.message }
         }
       }
-      return NextResponse.json({ results })
+      // Format response: extract just msgIds for the store, include debug
+      const msgIds: Record<string, string | null> = {}
+      for (const [chId, r] of Object.entries(results)) {
+        msgIds[chId] = (r as any).msgId || null
+      }
+      return NextResponse.json({ results: msgIds, debug: results })
     }
 
     // ── Delete from MULTIPLE channels in one server call ──
