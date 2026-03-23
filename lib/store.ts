@@ -289,34 +289,29 @@ export const useStore = create<AppState>((set, get) => ({
         .replace("{estimatedPrice}", formatCurrency(acc.estimatedSalePrice))
         .replace("{publico}", acc.publicType || "—")
 
-      let updatedChannels = [...whapiConfig.channels]
+      // Single API call sends to ALL channels server-side
+      const res = await fetch("/api/whapi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "sendMulti",
+          token: whapiConfig.token,
+          channelIds: activeChannels.map(ch => ch.id),
+          caption,
+          imageBase64: acc.screenshot || null,
+        }),
+      })
+      const json = await res.json()
+      const results = json.results || {}
 
+      // Update messageMap for each channel
+      let updatedChannels = whapiConfig.channels.map(ch => ({ ...ch, messageMap: { ...ch.messageMap } }))
       for (const ch of activeChannels) {
-        try {
-          let json: any
-          if (acc.screenshot) {
-            const res = await fetch("/api/whapi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "sendImage", token: whapiConfig.token, channelId: ch.id, caption, imageBase64: acc.screenshot }),
-            })
-            json = await res.json()
-          } else {
-            const res = await fetch("/api/whapi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "sendMessage", token: whapiConfig.token, channelId: ch.id, body: caption }),
-            })
-            json = await res.json()
-          }
-          let msgId = json.extractedId
-          if (!msgId && json._raw) msgId = json._raw.id || json._raw.message_id || json._raw.sent?.id
-          if (msgId) {
-            const idx = updatedChannels.findIndex(c => c.id === ch.id)
-            if (idx >= 0) updatedChannels[idx] = { ...updatedChannels[idx], messageMap: { ...updatedChannels[idx].messageMap, [String(acc.id)]: msgId } }
-          }
-        } catch (e) { console.error("Failed to send to channel", ch.name, e) }
-        await new Promise(r => setTimeout(r, 300))
+        const msgId = results[ch.id]
+        if (msgId) {
+          const idx = updatedChannels.findIndex(c => c.id === ch.id)
+          if (idx >= 0) updatedChannels[idx].messageMap[String(acc.id)] = msgId
+        }
       }
 
       const updated = { ...whapiConfig, channels: updatedChannels }
@@ -332,27 +327,29 @@ export const useStore = create<AppState>((set, get) => ({
     const activeChannels = whapiConfig.channels.filter(ch => ch.enabled)
     if (!whapiConfig.token || activeChannels.length === 0) return
     const key = String(accountId)
-    let updatedChannels = [...whapiConfig.channels]
 
+    // Collect all message IDs to delete across channels
+    const messageIds: string[] = []
     for (const ch of activeChannels) {
-      const messageId = ch.messageMap[key]
-      if (!messageId) continue
-      try {
-        await fetch("/api/whapi", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId }),
-        })
-      } catch (e) { console.error("Failed to delete from", ch.name, e) }
-      const idx = updatedChannels.findIndex(c => c.id === ch.id)
-      if (idx >= 0) {
-        const newMap = { ...updatedChannels[idx].messageMap }
-        delete newMap[key]
-        updatedChannels[idx] = { ...updatedChannels[idx], messageMap: newMap }
-      }
-      await new Promise(r => setTimeout(r, 300))
+      const msgId = ch.messageMap[key]
+      if (msgId) messageIds.push(msgId)
     }
+    if (messageIds.length === 0) return
 
+    try {
+      await fetch("/api/whapi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteMulti", token: whapiConfig.token, messageIds }),
+      })
+    } catch (e) { console.error("Failed to delete from channels:", e) }
+
+    // Remove from all channel maps
+    const updatedChannels = whapiConfig.channels.map(ch => {
+      const newMap = { ...ch.messageMap }
+      delete newMap[key]
+      return { ...ch, messageMap: newMap }
+    })
     const updated = { ...whapiConfig, channels: updatedChannels }
     set({ whapiConfig: updated })
     db.setSetting("whapiConfig", updated)

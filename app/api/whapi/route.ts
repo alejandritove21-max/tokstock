@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
+export const maxDuration = 30
+
 const WHAPI_BASE = "https://gate.whapi.cloud"
 
 // Whapi returns message ID in different places. This walks the full response to find it.
@@ -83,7 +85,58 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Send image + caption ──
+    // ── Send to MULTIPLE channels in one server call ──
+    if (action === "sendMulti") {
+      const { channelIds, caption, imageBase64 } = data
+      if (!Array.isArray(channelIds) || channelIds.length === 0) {
+        return NextResponse.json({ error: "channelIds array required" }, { status: 400 })
+      }
+      const results: Record<string, string | null> = {}
+      for (const chId of channelIds) {
+        try {
+          let res: Response
+          if (imageBase64) {
+            res = await fetch(`${WHAPI_BASE}/messages/image`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ to: chId, caption: caption || "", media: imageBase64 }),
+            })
+          } else {
+            res = await fetch(`${WHAPI_BASE}/messages/text`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ to: chId, body: caption || "" }),
+            })
+          }
+          const json = await res.json()
+          results[chId] = extractMessageId(json)
+          // Wait between sends to avoid rate limiting
+          await new Promise(r => setTimeout(r, 1500))
+        } catch {
+          results[chId] = null
+        }
+      }
+      return NextResponse.json({ results })
+    }
+
+    // ── Delete from MULTIPLE channels in one server call ──
+    if (action === "deleteMulti") {
+      const { messageIds } = data
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        return NextResponse.json({ error: "messageIds array required" }, { status: 400 })
+      }
+      let deleted = 0
+      for (const msgId of messageIds) {
+        try {
+          await fetch(`${WHAPI_BASE}/messages/${encodeURIComponent(msgId)}`, { method: "DELETE", headers })
+          deleted++
+        } catch {}
+        await new Promise(r => setTimeout(r, 500))
+      }
+      return NextResponse.json({ deleted })
+    }
+
+    // ── Send image + caption (single channel) ──
     if (action === "sendImage") {
       const { channelId, caption, imageBase64 } = data
       if (!channelId) {
