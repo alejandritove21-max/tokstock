@@ -52,6 +52,15 @@ export interface AIProvider {
   active: boolean
 }
 
+export interface WhapiConfig {
+  token: string
+  channelId: string
+  channelName: string
+  enabled: boolean
+  // Maps account ID -> WhatsApp message ID for deletion tracking
+  messageMap: Record<number, string>
+}
+
 interface AppState {
   // Navigation
   activeTab: string
@@ -82,6 +91,12 @@ interface AppState {
   setGoals: (v: Goal[]) => void
   setEmailWarehouse: (v: WarehouseEmail[]) => void
   setDarkMode: (v: boolean) => void
+
+  // Whapi
+  whapiConfig: WhapiConfig
+  setWhapiConfig: (v: WhapiConfig) => void
+  sendToChannel: (acc: Account) => Promise<void>
+  deleteFromChannel: (accountId: number) => Promise<void>
 
   // UI State
   selectedAccount: Account | null
@@ -150,14 +165,27 @@ export const useStore = create<AppState>((set, get) => ({
   addAccount: async (acc) => {
     const newAcc = await db.addAccount(acc)
     set((s) => ({ accounts: [newAcc, ...s.accounts] }))
+    // Auto-send to WhatsApp channel
+    if (newAcc.status === "available") {
+      get().sendToChannel(newAcc)
+    }
     return newAcc
   },
   updateAccount: async (id, acc) => {
     const updated = await db.updateAccount(id, acc)
+    const prevAccount = get().accounts.find(a => a.id === id)
     set((s) => ({
       accounts: s.accounts.map((a) => (a.id === id ? { ...a, ...updated } : a)),
       selectedAccount: s.selectedAccount?.id === id ? { ...s.selectedAccount, ...updated } : s.selectedAccount,
     }))
+    // Auto-delete from WhatsApp channel when sold or disqualified
+    if (prevAccount?.status === "available" && (updated.status === "sold" || updated.status === "disqualified")) {
+      get().deleteFromChannel(id)
+    }
+    // Auto-send if restored to available
+    if (prevAccount?.status !== "available" && updated.status === "available") {
+      get().sendToChannel(updated)
+    }
     return updated
   },
   deleteAccount: async (id) => {
@@ -187,6 +215,7 @@ export const useStore = create<AppState>((set, get) => ({
         db.getSetting("goals"),
         db.getSetting("emailWarehouse"),
         db.getSetting("theme"),
+        db.getSetting("whapiConfig"),
       ])
       const val = (i: number) => results[i].status === "fulfilled" ? (results[i] as any).value : null
       set({
@@ -197,6 +226,7 @@ export const useStore = create<AppState>((set, get) => ({
         goals: Array.isArray(val(4)) ? val(4) : [],
         emailWarehouse: Array.isArray(val(5)) ? val(5) : [],
         darkMode: val(6) !== "light",
+        whapiConfig: val(7) && typeof val(7) === "object" ? val(7) : get().whapiConfig,
       })
     } catch (e) {
       console.error("Failed to load settings:", e)
@@ -214,6 +244,66 @@ export const useStore = create<AppState>((set, get) => ({
   setGoals: (v) => { set({ goals: v }); db.setSetting("goals", v) },
   setEmailWarehouse: (v) => { set({ emailWarehouse: v }); db.setSetting("emailWarehouse", v) },
   setDarkMode: (v) => { set({ darkMode: v }); db.setSetting("theme", v ? "dark" : "light") },
+
+  // Whapi
+  whapiConfig: { token: "", channelId: "", channelName: "", enabled: false, messageMap: {} },
+  setWhapiConfig: (v) => { set({ whapiConfig: v }); db.setSetting("whapiConfig", v) },
+
+  sendToChannel: async (acc) => {
+    const { whapiConfig, countries } = get()
+    if (!whapiConfig.enabled || !whapiConfig.token || !whapiConfig.channelId) return
+    try {
+      const flag = countries.find(c => c.name === acc.country)?.emoji || ""
+      const cats = (acc.categories || []).join(", ")
+      const body = `💰 *CUENTA DISPONIBLE*\n\n👤 @${acc.username}\n👥 ${formatFollowers(acc.followers)} seguidores\n${flag} ${acc.country || "—"}${cats ? `\n📂 ${cats}` : ""}\n💵 Precio: ${formatCurrency(acc.estimatedSalePrice || acc.purchasePrice)}\n${acc.profileLink ? `\n🔗 ${acc.profileLink}` : ""}`
+
+      const res = await fetch("/api/whapi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "sendMessage",
+          token: whapiConfig.token,
+          channelId: whapiConfig.channelId,
+          body,
+        }),
+      })
+      const json = await res.json()
+      if (json.id) {
+        // Store message ID mapped to account ID
+        const updated = { ...whapiConfig, messageMap: { ...whapiConfig.messageMap, [acc.id]: json.id } }
+        set({ whapiConfig: updated })
+        db.setSetting("whapiConfig", updated)
+      }
+    } catch (e) {
+      console.error("Failed to send to channel:", e)
+    }
+  },
+
+  deleteFromChannel: async (accountId) => {
+    const { whapiConfig } = get()
+    if (!whapiConfig.enabled || !whapiConfig.token) return
+    const messageId = whapiConfig.messageMap[accountId]
+    if (!messageId) return
+    try {
+      await fetch("/api/whapi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteMessage",
+          token: whapiConfig.token,
+          messageId,
+        }),
+      })
+      // Remove from map
+      const newMap = { ...whapiConfig.messageMap }
+      delete newMap[accountId]
+      const updated = { ...whapiConfig, messageMap: newMap }
+      set({ whapiConfig: updated })
+      db.setSetting("whapiConfig", updated)
+    } catch (e) {
+      console.error("Failed to delete from channel:", e)
+    }
+  },
 
   // UI State
   selectedAccount: null,
