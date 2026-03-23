@@ -20,19 +20,20 @@ export function Broadcast() {
   const [sendingId, setSendingId] = useState<number | null>(null)
   const [shared, setShared] = useState<number[]>([])
   const [selectMode, setSelectMode] = useState(false)
-  const [selected, setSelected] = useState<number[]>([])
+  const [selected, setSelected] = useState<any[]>([])
 
   const avail = accounts.filter(a => a.status === "available")
   const isConnected = !!(whapiConfig.enabled && whapiConfig.token && whapiConfig.channelId)
   const trackedCount = Object.keys(whapiConfig.messageMap).length
 
-  const toggleSelect = (id: number) => {
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  const toggleSelect = (id: any) => {
+    const strId = String(id)
+    setSelected(prev => prev.map(String).includes(strId) ? prev.filter(x => String(x) !== strId) : [...prev, id])
   }
 
   const selectAllTracked = () => {
-    const trackedIds = Object.keys(whapiConfig.messageMap).map(Number)
-    setSelected(trackedIds)
+    const trackedIds = Object.keys(whapiConfig.messageMap)
+    setSelected(trackedIds as any[])
   }
 
   // Load newsletters and groups
@@ -90,7 +91,7 @@ export function Broadcast() {
     setSending(true)
     let sent = 0
     for (const acc of avail) {
-      if (whapiConfig.messageMap[acc.id]) continue
+      if (whapiConfig.messageMap[acc.id] || whapiConfig.messageMap[String(acc.id)]) continue
       await sendToChannel(acc)
       sent++
       setShared(prev => [...prev, acc.id])
@@ -100,16 +101,15 @@ export function Broadcast() {
     setSending(false)
   }
 
-  // Fixed: snapshot the IDs first, then delete one by one
+  // Fixed: snapshot the IDs first, delete via API, then clear map
   const deleteAll = async () => {
     if (!isConnected) return
     setDeleting(true)
-    const idsToDelete = Object.keys(whapiConfig.messageMap).map(Number)
+    const entries = Object.entries(whapiConfig.messageMap)
     let deleted = 0
-    for (const accId of idsToDelete) {
+    for (const [accId, messageId] of entries) {
+      if (!messageId) continue
       try {
-        const messageId = whapiConfig.messageMap[accId]
-        if (!messageId) continue
         await fetch("/api/whapi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -120,8 +120,7 @@ export function Broadcast() {
       await new Promise(r => setTimeout(r, 500))
     }
     // Clear the entire map at once
-    const updated = { ...whapiConfig, messageMap: {} }
-    setWhapiConfig(updated)
+    setWhapiConfig({ ...whapiConfig, messageMap: {} })
     setShared([])
     notify(`${deleted} mensaje(s) borrado(s) del canal`)
     setDeleting(false)
@@ -134,7 +133,8 @@ export function Broadcast() {
     let deleted = 0
     const currentMap = { ...whapiConfig.messageMap }
     for (const accId of selected) {
-      const messageId = currentMap[accId]
+      const key = String(accId)
+      const messageId = currentMap[key] || currentMap[accId]
       if (!messageId) continue
       try {
         await fetch("/api/whapi", {
@@ -142,6 +142,7 @@ export function Broadcast() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId }),
         })
+        delete currentMap[key]
         delete currentMap[accId]
         deleted++
       } catch {}
@@ -310,11 +311,11 @@ export function Broadcast() {
       {/* Account List */}
       <div className="flex flex-col gap-2">
         {avail.map(a => {
-          const inChannel = !!whapiConfig.messageMap[a.id]
+          const inChannel = !!whapiConfig.messageMap[a.id] || !!whapiConfig.messageMap[String(a.id)]
           const isSending = sendingId === a.id
           const done = shared.includes(a.id) || inChannel
           const flag = countries.find(c => c.name === a.country)?.emoji || ""
-          const isSelected = selected.includes(a.id)
+          const isSelected = selected.map(String).includes(String(a.id))
 
           return (
             <div key={a.id} onClick={() => selectMode && inChannel && toggleSelect(a.id)}
@@ -370,7 +371,7 @@ export function Broadcast() {
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Mensajes en canal ({trackedCount})</p>
           <div className="space-y-1">
             {Object.entries(whapiConfig.messageMap).map(([accId, msgId]) => {
-              const acc = accounts.find(a => a.id === Number(accId))
+              const acc = accounts.find(a => String(a.id) === String(accId))
               return (
                 <div key={accId} className="flex items-center justify-between text-[10px]">
                   <span className="text-muted-foreground">@{acc?.username || `ID:${accId}`}</span>

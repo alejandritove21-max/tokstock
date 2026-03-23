@@ -321,9 +321,11 @@ export const useStore = create<AppState>((set, get) => ({
   deleteFromChannel: async (accountId) => {
     const { whapiConfig } = get()
     if (!whapiConfig.enabled || !whapiConfig.token) return
-    const messageId = whapiConfig.messageMap[accountId]
+    // Account ID could be number or UUID string — try both
+    const key = String(accountId)
+    const messageId = whapiConfig.messageMap[key] || whapiConfig.messageMap[accountId]
     if (!messageId) {
-      console.log("[TokStock] No message ID found for account", accountId, "map:", JSON.stringify(whapiConfig.messageMap))
+      console.log("[TokStock] No message ID for account", accountId, "keys:", Object.keys(whapiConfig.messageMap))
       return
     }
     try {
@@ -339,8 +341,9 @@ export const useStore = create<AppState>((set, get) => ({
       })
       const json = await res.json()
       console.log("[TokStock] Delete response:", JSON.stringify(json))
-      // Remove from map regardless of result
+      // Remove from map
       const newMap = { ...whapiConfig.messageMap }
+      delete newMap[key]
       delete newMap[accountId]
       const updated = { ...whapiConfig, messageMap: newMap }
       set({ whapiConfig: updated })
