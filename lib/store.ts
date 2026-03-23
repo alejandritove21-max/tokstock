@@ -57,6 +57,7 @@ export interface WhapiConfig {
   channelId: string
   channelName: string
   enabled: boolean
+  broadcastTemplate: string
   // Maps account ID -> WhatsApp message ID for deletion tracking
   messageMap: Record<number, string>
 }
@@ -248,7 +249,7 @@ export const useStore = create<AppState>((set, get) => ({
   setDarkMode: (v) => { set({ darkMode: v }); db.setSetting("theme", v ? "dark" : "light") },
 
   // Whapi
-  whapiConfig: { token: "", channelId: "", channelName: "", enabled: false, messageMap: {} },
+  whapiConfig: { token: "", channelId: "", channelName: "", enabled: false, broadcastTemplate: "💰 *CUENTA DISPONIBLE*\n\n👤 @{username}\n👥 {followers} seguidores\n{flag} {country}\n📂 {categories}\n💵 Precio: {price}\n\n🔗 {link}", messageMap: {} },
   setWhapiConfig: (v) => { set({ whapiConfig: v }); db.setSetting("whapiConfig", v) },
 
   sendToChannel: async (acc) => {
@@ -257,7 +258,18 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const flag = countries.find(c => c.name === acc.country)?.emoji || ""
       const cats = (acc.categories || []).join(", ")
-      const caption = `💰 *CUENTA DISPONIBLE*\n\n👤 @${acc.username}\n👥 ${formatFollowers(acc.followers)} seguidores\n${flag} ${acc.country || "—"}${cats ? `\n📂 ${cats}` : ""}\n💵 Precio: ${formatCurrency(acc.estimatedSalePrice || acc.purchasePrice)}${acc.profileLink ? `\n\n🔗 ${acc.profileLink}` : ""}`
+      const template = whapiConfig.broadcastTemplate || "💰 *CUENTA DISPONIBLE*\n\n👤 @{username}\n👥 {followers} seguidores\n{flag} {country}\n📂 {categories}\n💵 Precio: {price}\n\n🔗 {link}"
+      const caption = template
+        .replace("{username}", acc.username || "")
+        .replace("{followers}", formatFollowers(acc.followers))
+        .replace("{country}", acc.country || "—")
+        .replace("{flag}", flag)
+        .replace("{categories}", cats || "—")
+        .replace("{niche}", acc.niche || "—")
+        .replace("{price}", formatCurrency(acc.estimatedSalePrice || acc.purchasePrice))
+        .replace("{link}", acc.profileLink || "")
+        .replace("{purchasePrice}", formatCurrency(acc.purchasePrice))
+        .replace("{estimatedPrice}", formatCurrency(acc.estimatedSalePrice))
 
       let json: any
 
