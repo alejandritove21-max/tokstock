@@ -46,6 +46,7 @@ export function AccountDetail() {
       .replace("{email}", a.email || "")
       .replace("{tiktokPassword}", a.tiktokPassword || "")
       .replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
+      .replace("{publico}", a.publicType || "—")
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
   }
 
@@ -260,7 +261,7 @@ export function AccountDetail() {
       <div className="space-y-2">
         <button
           onClick={() => {
-            const msg = whatsappTemplate.replace("{username}", a.username || "").replace("{followers}", formatFollowers(a.followers)).replace("{niche}", a.niche || "—").replace("{link}", a.profileLink || "").replace("{email}", a.email || "").replace("{tiktokPassword}", a.tiktokPassword || "").replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
+            const msg = whatsappTemplate.replace("{username}", a.username || "").replace("{followers}", formatFollowers(a.followers)).replace("{niche}", a.niche || "—").replace("{link}", a.profileLink || "").replace("{email}", a.email || "").replace("{tiktokPassword}", a.tiktokPassword || "").replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "").replace("{publico}", a.publicType || "—")
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
           }}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#25D366] to-[#1da855] py-3.5 font-semibold text-white transition-all active:scale-[0.98]"

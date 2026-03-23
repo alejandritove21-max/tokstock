@@ -49,12 +49,12 @@ export function AccountForm() {
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement("canvas")
-        const MAX = 600
+        const MAX = 1200
         let w = img.width, h = img.height
         if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX } else { w = Math.round(w * MAX / h); h = MAX } }
         canvas.width = w; canvas.height = h
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
-        resolve(canvas.toDataURL("image/jpeg", 0.7))
+        resolve(canvas.toDataURL("image/jpeg", 0.92))
       }
       img.src = ev.target!.result as string
     }
@@ -76,7 +76,7 @@ export function AccountForm() {
       
       try {
         const canvas = document.createElement("canvas")
-        const W = 800
+        const W = 1200
         const hA = Math.round(imgA.height * (W / 2) / imgA.width)
         const hB = Math.round(imgB.height * (W / 2) / imgB.width)
         const H = Math.max(hA, hB)
@@ -87,7 +87,7 @@ export function AccountForm() {
         ctx.fillRect(0, 0, W, H)
         ctx.drawImage(imgA, 0, Math.round((H - hA) / 2), W / 2, hA)
         ctx.drawImage(imgB, W / 2, Math.round((H - hB) / 2), W / 2, hB)
-        const collageData = canvas.toDataURL("image/jpeg", 0.75)
+        const collageData = canvas.toDataURL("image/jpeg", 0.90)
         setForm(f => ({ ...f, screenshot: collageData }))
       } catch (e) {
         console.error("Collage error:", e)
