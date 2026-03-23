@@ -241,8 +241,6 @@ export function Broadcast() {
                       {channelId === n.id && <Check className="h-3 w-3 text-primary" />}
                     </button>
                   ))}
-                    </button>
-                  ))}
                 </div>
               ) : (
                 <input
