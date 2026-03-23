@@ -29,6 +29,7 @@ export function AccountForm() {
     country: editingAccount?.country || "",
     categories: editingAccount?.categories || [],
     niche: editingAccount?.niche || "",
+    publicType: editingAccount?.publicType || "",
     screenshot: editingAccount?.screenshot || "",
     notes: editingAccount?.notes || "",
     purchasePrice: editingAccount?.purchasePrice?.toString() || "",
@@ -412,6 +413,10 @@ export function AccountForm() {
                         <span className="text-[10px] text-muted-foreground">Nicho</span>
                         <span className="text-xs">{form.niche || "—"}</span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Público</span>
+                        <span className="text-xs">{form.publicType || "—"}</span>
+                      </div>
                     </div>
                     {verifyStatus === "mismatch" && (
                       <p className="mt-2 text-[10px] font-medium text-warning">⚠️ Los datos no coinciden exactamente. Revisa el username y seguidores.</p>
@@ -469,6 +474,19 @@ export function AccountForm() {
                   <button key={cat} onClick={() => upd("categories", form.categories.includes(cat) ? form.categories.filter((c: string) => c !== cat) : [...form.categories, cat])}
                     className={cn("rounded-lg px-3 py-2 text-xs font-medium transition-all", form.categories.includes(cat) ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
                     {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tipo de Público */}
+            <div>
+              <label className="mb-2 block text-sm text-muted-foreground">Tipo de Público</label>
+              <div className="flex flex-wrap gap-2">
+                {["Latino", "Árabe", "Mixto"].map(tipo => (
+                  <button key={tipo} onClick={() => upd("publicType", form.publicType === tipo ? "" : tipo)}
+                    className={cn("rounded-lg px-4 py-2 text-xs font-medium transition-all", form.publicType === tipo ? "bg-blue-500 text-white" : "bg-secondary text-muted-foreground")}>
+                    {tipo === "Latino" ? "🌎 Latino" : tipo === "Árabe" ? "🕌 Árabe" : "🌍 Mixto"}
                   </button>
                 ))}
               </div>

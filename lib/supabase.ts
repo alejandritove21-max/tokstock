@@ -8,13 +8,16 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 // ── Field mapping: camelCase (app) ↔ snake_case (DB) ──
 
 export function toDbAccount(acc: Record<string, any>) {
+  // Encode publicType as a special category entry
+  const cats = (acc.categories || []).filter((c: string) => !c.startsWith("_pub:"))
+  if (acc.publicType) cats.push(`_pub:${acc.publicType}`)
   return {
     username: acc.username,
     profile_name: acc.profileName,
     followers: acc.followers ? Number(acc.followers) : 0,
     profile_link: acc.profileLink,
     country: acc.country,
-    categories: acc.categories || [],
+    categories: cats,
     niche: acc.niche,
     screenshot: acc.screenshot,
     notes: acc.notes,
@@ -34,6 +37,10 @@ export function toDbAccount(acc: Record<string, any>) {
 }
 
 export function fromDbAccount(row: Record<string, any>) {
+  const allCats = Array.isArray(row.categories) ? row.categories : []
+  const pubEntry = allCats.find((c: string) => c.startsWith("_pub:"))
+  const publicType = pubEntry ? pubEntry.replace("_pub:", "") : ""
+  const categories = allCats.filter((c: string) => !c.startsWith("_pub:"))
   return {
     id: row.id,
     username: row.username || "",
@@ -41,8 +48,9 @@ export function fromDbAccount(row: Record<string, any>) {
     followers: row.followers || 0,
     profileLink: row.profile_link || "",
     country: row.country || "",
-    categories: Array.isArray(row.categories) ? row.categories : [],
+    categories,
     niche: row.niche || "",
+    publicType,
     screenshot: row.screenshot || "",
     notes: row.notes || "",
     purchasePrice: row.purchase_price || 0,

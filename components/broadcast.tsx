@@ -205,7 +205,7 @@ export function Broadcast() {
             className="mb-3 w-full rounded-xl border border-border bg-secondary px-4 py-3 font-mono text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
           <div className="mb-3 flex flex-wrap gap-1">
-            {["{username}", "{followers}", "{country}", "{flag}", "{categories}", "{niche}", "{price}", "{purchasePrice}", "{estimatedPrice}", "{link}"].map(v => (
+            {["{username}", "{followers}", "{country}", "{flag}", "{categories}", "{niche}", "{publico}", "{price}", "{purchasePrice}", "{estimatedPrice}", "{link}"].map(v => (
               <button key={v} onClick={() => setTemplate(prev => prev + v)} className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">{v}</button>
             ))}
           </div>

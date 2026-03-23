@@ -152,6 +152,7 @@ export function AccountDetail() {
           ["País", `${flag} ${a.country || "—"}`],
           ["Categorías", (a.categories || []).join(", ") || "—"],
           ["Nicho", a.niche || "—"],
+          ["Público", a.publicType || "—"],
           ["Link", a.profileLink],
         ].map(([label, val]) => val && (
           <div key={label} className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">

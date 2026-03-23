@@ -14,6 +14,7 @@ export interface Account {
   country: string
   categories: string[]
   niche: string
+  publicType: string
   screenshot: string
   notes: string
   purchasePrice: number
@@ -270,6 +271,7 @@ export const useStore = create<AppState>((set, get) => ({
         .replace("{link}", acc.profileLink || "")
         .replace("{purchasePrice}", formatCurrency(acc.purchasePrice))
         .replace("{estimatedPrice}", formatCurrency(acc.estimatedSalePrice))
+        .replace("{publico}", acc.publicType || "—")
 
       let json: any
 

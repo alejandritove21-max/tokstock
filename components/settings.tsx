@@ -189,7 +189,7 @@ function WhatsAppEditor({ onBack }: { onBack: () => void }) {
         <button onClick={() => { setWhatsappTemplate(text); onBack() }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="text-xl font-bold">Formato WhatsApp</h1>
       </header>
-      <p className="text-xs text-muted-foreground">Variables: {"{username}"}, {"{followers}"}, {"{niche}"}, {"{link}"}, {"{email}"}, {"{tiktokPassword}"}, {"{emailPassword}"}</p>
+      <p className="text-xs text-muted-foreground">Variables: {"{username}"}, {"{followers}"}, {"{niche}"}, {"{publico}"}, {"{link}"}, {"{email}"}, {"{tiktokPassword}"}, {"{emailPassword}"}</p>
       <textarea rows={10} value={text} onChange={e => setText(e.target.value)} className="w-full resize-y rounded-xl border border-border bg-secondary p-4 text-sm focus:border-primary focus:outline-none" />
       <button onClick={() => { setWhatsappTemplate(text); onBack() }} className="w-full rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground">Guardar</button>
     </div>
