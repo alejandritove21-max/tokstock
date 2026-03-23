@@ -27,19 +27,33 @@ export function Broadcast() {
     if (!token) { notify("Ingresa tu token de Whapi", "error"); return }
     setLoadingNewsletters(true)
     try {
+      // Try newsletters first
       const res = await fetch("/api/whapi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "getNewsletters", token }),
       })
       const json = await res.json()
-      if (json.error) throw new Error(json.error)
-      const list = json.newsletters || json.data || json || []
-      setNewsletters(Array.isArray(list) ? list : [])
-      if (Array.isArray(list) && list.length > 0) {
+
+      let list = json.newsletters || []
+
+      // If no newsletters, try groups
+      if (list.length === 0) {
+        const res2 = await fetch("/api/whapi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getGroups", token }),
+        })
+        const json2 = await res2.json()
+        const groups = json2.groups || []
+        list = [...list, ...groups]
+      }
+
+      setNewsletters(list)
+      if (list.length > 0) {
         notify(`${list.length} canal(es) encontrado(s)`)
       } else {
-        notify("No se encontraron canales", "error")
+        notify("No se encontraron canales. Pega el ID manualmente.", "error")
       }
     } catch (e: any) {
       notify(`Error: ${e.message}`, "error")
@@ -237,7 +251,10 @@ export function Broadcast() {
               1. Crea una cuenta en <span className="text-primary">whapi.cloud</span><br/>
               2. Conecta tu número WhatsApp (QR)<br/>
               3. Copia tu API Token del dashboard<br/>
-              4. Pégalo aquí y busca tus canales
+              4. Pégalo aquí y busca tus canales<br/><br/>
+              <strong>¿No encuentra tu canal?</strong><br/>
+              Abre tu canal en WhatsApp → toca el nombre arriba → copia el <strong>link de invitación</strong> (ej: whatsapp.com/channel/0029VaXXX). Pega solo el código después de /channel/ y agrega <span className="font-mono text-primary">@newsletter</span> al final.<br/>
+              Ejemplo: <span className="font-mono text-primary">0029VaXXXXX@newsletter</span>
             </p>
           </div>
         </div>

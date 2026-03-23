@@ -19,8 +19,35 @@ export async function POST(req: NextRequest) {
     // Get list of newsletters (channels)
     if (action === "getNewsletters") {
       const res = await fetch(`${WHAPI_BASE}/newsletters?count=100`, { headers })
-      const json = await res.json()
-      return NextResponse.json(json)
+      const text = await res.text()
+      try {
+        const json = JSON.parse(text)
+        // Whapi may return { newsletters: [...] } or { data: [...] } or just [...]
+        let list = []
+        if (Array.isArray(json)) list = json
+        else if (json.newsletters && Array.isArray(json.newsletters)) list = json.newsletters
+        else if (json.data && Array.isArray(json.data)) list = json.data
+        else if (json.count !== undefined && json.newsletters) list = json.newsletters
+        return NextResponse.json({ newsletters: list, raw: json })
+      } catch {
+        return NextResponse.json({ error: "Invalid response from Whapi", raw: text }, { status: 500 })
+      }
+    }
+
+    // Get all groups (fallback if newsletters empty)
+    if (action === "getGroups") {
+      const res = await fetch(`${WHAPI_BASE}/groups?count=100`, { headers })
+      const text = await res.text()
+      try {
+        const json = JSON.parse(text)
+        let list = []
+        if (Array.isArray(json)) list = json
+        else if (json.groups && Array.isArray(json.groups)) list = json.groups
+        else if (json.data && Array.isArray(json.data)) list = json.data
+        return NextResponse.json({ groups: list, raw: json })
+      } catch {
+        return NextResponse.json({ error: "Invalid response", raw: text }, { status: 500 })
+      }
     }
 
     // Send text message to channel
