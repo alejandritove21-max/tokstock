@@ -386,6 +386,24 @@ export function Broadcast() {
       {avail.length === 0 && (
         <div className="py-12 text-center text-sm text-muted-foreground">No hay cuentas disponibles</div>
       )}
+
+      {/* Debug: Message Map */}
+      {isConnected && trackedCount > 0 && (
+        <div className="rounded-xl border border-border/50 bg-secondary/30 p-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Mensajes rastreados ({trackedCount})</p>
+          <div className="space-y-1">
+            {Object.entries(whapiConfig.messageMap).map(([accId, msgId]) => {
+              const acc = accounts.find(a => a.id === Number(accId))
+              return (
+                <div key={accId} className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground">@{acc?.username || `ID:${accId}`}</span>
+                  <span className="font-mono text-[9px] text-muted-foreground/60 max-w-[180px] truncate">{msgId as string}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

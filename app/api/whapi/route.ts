@@ -2,9 +2,32 @@ import { NextRequest, NextResponse } from "next/server"
 
 const WHAPI_BASE = "https://gate.whapi.cloud"
 
+// Whapi returns message ID in different places. This walks the full response to find it.
 function extractMessageId(json: any): string | null {
-  // Whapi can return the ID in different places depending on version
-  return json.message_id || json.id || json.sent?.id || json.sent?.message_id || json.msgId || null
+  if (!json || typeof json !== "object") return null
+  // Direct fields
+  if (json.message_id) return json.message_id
+  if (typeof json.id === "string" && json.id.includes("@")) return json.id
+  // Nested in sent
+  if (json.sent?.id) return json.sent.id
+  if (json.sent?.message_id) return json.sent.message_id
+  // Nested in message
+  if (json.message?.id) return json.message.id
+  if (json.message?.message_id) return json.message.message_id
+  // Some versions return { id: "true_xxx@g.us_ABCDEF" }
+  if (typeof json.id === "string") return json.id
+  // Walk first level looking for anything that looks like a message ID
+  for (const key of Object.keys(json)) {
+    const val = json[key]
+    if (typeof val === "string" && (val.includes("true_") || val.includes("false_") || val.length > 20)) {
+      return val
+    }
+    if (typeof val === "object" && val !== null && !Array.isArray(val)) {
+      if (val.id) return val.id
+      if (val.message_id) return val.message_id
+    }
+  }
+  return null
 }
 
 export async function POST(req: NextRequest) {
@@ -60,23 +83,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Send image + caption (primary for accounts with screenshots) ──
+    // ── Send image + caption ──
     if (action === "sendImage") {
       const { channelId, caption, imageBase64 } = data
       if (!channelId) {
         return NextResponse.json({ error: "channelId required" }, { status: 400 })
       }
-
       const payload: any = {
         to: channelId,
         caption: caption || "",
       }
-
-      // imageBase64 should be the full data URI: "data:image/jpeg;base64,/9j/..."
       if (imageBase64) {
         payload.media = imageBase64
       }
-
       const res = await fetch(`${WHAPI_BASE}/messages/image`, {
         method: "POST",
         headers,
@@ -86,10 +105,12 @@ export async function POST(req: NextRequest) {
       if (json.error) {
         return NextResponse.json({ error: json.error?.message || JSON.stringify(json.error) }, { status: 500 })
       }
-      return NextResponse.json({ ...json, extractedId: extractMessageId(json) })
+      const msgId = extractMessageId(json)
+      // Return full response for debugging + extracted ID
+      return NextResponse.json({ extractedId: msgId, _raw: json })
     }
 
-    // ── Send text only (fallback for accounts without screenshots) ──
+    // ── Send text only ──
     if (action === "sendMessage") {
       const { channelId, body } = data
       if (!channelId || !body) {
@@ -98,16 +119,14 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${WHAPI_BASE}/messages/text`, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          to: channelId,
-          body,
-        }),
+        body: JSON.stringify({ to: channelId, body }),
       })
       const json = await res.json()
       if (json.error) {
         return NextResponse.json({ error: json.error?.message || JSON.stringify(json.error) }, { status: 500 })
       }
-      return NextResponse.json({ ...json, extractedId: extractMessageId(json) })
+      const msgId = extractMessageId(json)
+      return NextResponse.json({ extractedId: msgId, _raw: json })
     }
 
     // ── Delete message ──
@@ -116,14 +135,20 @@ export async function POST(req: NextRequest) {
       if (!messageId) {
         return NextResponse.json({ error: "messageId required" }, { status: 400 })
       }
-      const res = await fetch(`${WHAPI_BASE}/messages/${messageId}`, {
+      // Whapi delete endpoint: DELETE /messages/{MessageID}
+      const res = await fetch(`${WHAPI_BASE}/messages/${encodeURIComponent(messageId)}`, {
         method: "DELETE",
         headers,
       })
       const text = await res.text()
       let json: any = {}
       try { json = JSON.parse(text) } catch {}
-      return NextResponse.json({ success: res.ok, status: res.status, ...json })
+      return NextResponse.json({ success: res.ok, status: res.status, deletedId: messageId, ...json })
+    }
+
+    // ── Debug: see what's stored ──
+    if (action === "debug") {
+      return NextResponse.json({ message: "Whapi proxy working", token: token.substring(0, 4) + "..." })
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 })

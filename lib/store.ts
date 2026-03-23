@@ -262,7 +262,6 @@ export const useStore = create<AppState>((set, get) => ({
       let json: any
 
       if (acc.screenshot) {
-        // Send image with caption
         const res = await fetch("/api/whapi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -276,7 +275,6 @@ export const useStore = create<AppState>((set, get) => ({
         })
         json = await res.json()
       } else {
-        // Send text only
         const res = await fetch("/api/whapi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -290,8 +288,14 @@ export const useStore = create<AppState>((set, get) => ({
         json = await res.json()
       }
 
-      // Store message ID for later deletion
-      const msgId = json.extractedId || json.message_id || json.id || json.sent?.id
+      // Extract message ID - check extractedId first, then dig into _raw
+      let msgId = json.extractedId
+      if (!msgId && json._raw) {
+        msgId = json._raw.id || json._raw.message_id || json._raw.sent?.id
+      }
+      
+      console.log("[TokStock] Sent to channel, response:", JSON.stringify(json).substring(0, 300), "msgId:", msgId)
+      
       if (msgId) {
         const updated = { ...whapiConfig, messageMap: { ...whapiConfig.messageMap, [acc.id]: msgId } }
         set({ whapiConfig: updated })
@@ -306,9 +310,13 @@ export const useStore = create<AppState>((set, get) => ({
     const { whapiConfig } = get()
     if (!whapiConfig.enabled || !whapiConfig.token) return
     const messageId = whapiConfig.messageMap[accountId]
-    if (!messageId) return
+    if (!messageId) {
+      console.log("[TokStock] No message ID found for account", accountId, "map:", JSON.stringify(whapiConfig.messageMap))
+      return
+    }
     try {
-      await fetch("/api/whapi", {
+      console.log("[TokStock] Deleting message", messageId, "for account", accountId)
+      const res = await fetch("/api/whapi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -317,7 +325,9 @@ export const useStore = create<AppState>((set, get) => ({
           messageId,
         }),
       })
-      // Remove from map
+      const json = await res.json()
+      console.log("[TokStock] Delete response:", JSON.stringify(json))
+      // Remove from map regardless of result
       const newMap = { ...whapiConfig.messageMap }
       delete newMap[accountId]
       const updated = { ...whapiConfig, messageMap: newMap }
