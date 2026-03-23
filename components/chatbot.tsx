@@ -75,53 +75,26 @@ Responde preguntas sobre el inventario, estadísticas, recomendaciones de precio
       const isClaude = provider.name.toLowerCase().includes("claude") || provider.name.toLowerCase().includes("anthropic")
       const context = buildContext()
 
-      let reply = ""
+      // Build conversation history (skip the initial greeting)
+      const history = messages
+        .filter((m, i) => !(i === 0 && m.role === "assistant"))
+        .map(m => ({ role: m.role, content: m.content }))
 
-      if (isClaude) {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": provider.key,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 1000,
-            system: context,
-            messages: [...messages.filter(m => m.role !== "assistant" || messages.indexOf(m) > 0).map(m => ({
-              role: m.role,
-              content: m.content,
-            })), { role: "user", content: input }],
-          }),
-        })
-        const json = await res.json()
-        if (json.error) throw new Error(json.error.message)
-        reply = (json.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("")
-      } else {
-        // OpenAI
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${provider.key}` },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: context },
-              ...messages.filter(m => m.role !== "assistant" || messages.indexOf(m) > 0).map(m => ({
-                role: m.role,
-                content: m.content,
-              })),
-              { role: "user", content: input },
-            ],
-            max_tokens: 1000,
-          }),
-        })
-        const json = await res.json()
-        if (json.error) throw new Error(json.error.message)
-        reply = json.choices?.[0]?.message?.content || "Sin respuesta"
-      }
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: isClaude ? "claude" : "openai",
+          apiKey: provider.key,
+          context,
+          messages: [...history, { role: "user", content: input }],
+        }),
+      })
 
-      setMessages(prev => [...prev, { role: "assistant", content: reply }])
+      const json = await res.json()
+      if (json.error) throw new Error(json.error)
+
+      setMessages(prev => [...prev, { role: "assistant", content: json.reply }])
     } catch (e: any) {
       setMessages(prev => [...prev, { role: "assistant", content: `❌ Error: ${e.message}` }])
     }
