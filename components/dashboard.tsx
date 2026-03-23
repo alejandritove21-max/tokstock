@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { TrendingUp, TrendingDown, Package, DollarSign, AlertCircle, Wifi } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useStore, formatCurrency, formatFollowers, venezuelaDate, type Account } from "@/lib/store"
+import { useStore, formatCurrency, formatFollowers, today, venezuelaDateStr, venezuelaDaysAgo, isOnOrAfter, type Account } from "@/lib/store"
 import { AccountCard } from "./account-card"
 
 const periods = [
@@ -13,28 +13,14 @@ const periods = [
   { key: "90d", label: "90 Días" },
 ]
 
-function getPeriodStart(key: string): Date {
-  const now = venezuelaDate()
-  const start = new Date(now)
-  start.setHours(0, 0, 0, 0)
-  if (key === "7d") start.setDate(start.getDate() - 7)
-  else if (key === "30d") start.setDate(start.getDate() - 30)
-  else if (key === "90d") start.setDate(start.getDate() - 90)
-  return start
-}
-
-function isInPeriod(dateStr: string | null, start: Date): boolean {
-  if (!dateStr) return false
-  try {
-    const d = new Date(new Date(dateStr).toLocaleString("en-US", { timeZone: "America/Caracas" }))
-    return d >= start
-  } catch { return false }
-}
-
 function calcStats(accounts: Account[], periodKey: string) {
-  const start = getPeriodStart(periodKey)
-  const sold = accounts.filter(a => a.status === "sold" && isInPeriod(a.soldDate, start))
-  const disq = accounts.filter(a => a.status === "disqualified" && isInPeriod(a.disqualifiedDate, start))
+  const startKey = periodKey === "today" ? today()
+    : periodKey === "7d" ? venezuelaDaysAgo(7)
+    : periodKey === "30d" ? venezuelaDaysAgo(30)
+    : venezuelaDaysAgo(90)
+
+  const sold = accounts.filter(a => a.status === "sold" && isOnOrAfter(a.soldDate, startKey))
+  const disq = accounts.filter(a => a.status === "disqualified" && isOnOrAfter(a.disqualifiedDate, startKey))
   const revenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
   const costSold = sold.reduce((s, a) => s + (a.purchasePrice || 0), 0)
   const profit = revenue - costSold
@@ -48,8 +34,8 @@ export function Dashboard() {
   const [period, setPeriod] = useState("7d")
   const [locationInfo, setLocationInfo] = useState<{ country: string; flag: string; ip: string } | null>(null)
 
-  const now = venezuelaDate()
-  const dateStr = now.toLocaleDateString("es-VE", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Caracas" })
+  const now = new Date()
+  const dateStr = venezuelaDateStr()
 
   const available = accounts.filter(a => a.status === "available")
   const soldAll = accounts.filter(a => a.status === "sold")
@@ -197,11 +183,12 @@ export function Dashboard() {
       )}
 
       {/* Quick access buttons */}
-      <div className="grid grid-cols-3 gap-2 pb-4">
+      <div className="grid grid-cols-4 gap-2 pb-4">
         {[
           { label: "Buscar", icon: "🔍", tab: "buscar" },
           { label: "Metas", icon: "🎯", tab: "metas" },
           { label: "Bodega", icon: "📧", tab: "bodega" },
+          { label: "Chat IA", icon: "🤖", tab: "chatbot" },
         ].map(b => (
           <button
             key={b.tab}

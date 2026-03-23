@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Upload, Plus, X } from "lucide-react"
+import { ArrowLeft, Upload, Plus, X, Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore, today } from "@/lib/store"
 
@@ -14,6 +14,7 @@ export function EmailWarehouse() {
   const [bulkText, setBulkText] = useState("")
   const [newEmail, setNewEmail] = useState("")
   const [newPass, setNewPass] = useState("")
+  const [showPasswords, setShowPasswords] = useState(false)
 
   const availCount = emailWarehouse.filter(e => !e.used).length
   const usedCount = emailWarehouse.filter(e => e.used).length
@@ -67,10 +68,16 @@ export function EmailWarehouse() {
             <p className="text-[10px] text-muted-foreground">{availCount} disponibles · {usedCount} usados · {emailWarehouse.length} total</p>
           </div>
         </div>
-        <button onClick={() => setShowBulk(!showBulk)} className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-[10px] font-medium text-muted-foreground">
-          <Upload className="h-3.5 w-3.5" />
-          {showBulk ? "Individual" : "Masivo"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowPasswords(!showPasswords)} className="flex items-center gap-1 rounded-full bg-secondary px-3 py-1.5 text-[10px] font-medium text-muted-foreground">
+            {showPasswords ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showPasswords ? "Ocultar" : "Ver"}
+          </button>
+          <button onClick={() => setShowBulk(!showBulk)} className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-[10px] font-medium text-muted-foreground">
+            <Upload className="h-3.5 w-3.5" />
+            {showBulk ? "Individual" : "Masivo"}
+          </button>
+        </div>
       </header>
 
       {/* Add form */}
@@ -104,21 +111,35 @@ export function EmailWarehouse() {
       {/* List */}
       <div className="flex flex-col gap-2">
         {filtered.map((e, i) => (
-          <div key={i} className={cn("flex items-center justify-between rounded-xl border bg-card p-4", e.used ? "border-border opacity-60" : "border-border")}>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{e.email}</p>
-              <p className="font-mono text-[10px] text-muted-foreground">
-                {e.password ? "••••••" : "Sin contraseña"}
-                {e.used && e.usedBy ? ` · @${e.usedBy}` : ""}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => toggle(e.email)} className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium", e.used ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                {e.used ? "Usada" : "Disponible"}
-              </button>
-              <button onClick={() => remove(e.email)} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                <X className="h-4 w-4" />
-              </button>
+          <div key={i} className={cn("rounded-xl border bg-card p-4", e.used ? "border-border opacity-60" : "border-border")}>
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{e.email}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {showPasswords ? (e.password || "Sin contraseña") : (e.password ? "••••••••" : "Sin contraseña")}
+                  </p>
+                  {e.password && (
+                    <button
+                      onClick={async () => { try { await navigator.clipboard.writeText(e.password) } catch {} }}
+                      className="text-[10px] text-accent"
+                    >
+                      Copiar
+                    </button>
+                  )}
+                </div>
+                {e.used && e.usedBy && (
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Usada por @{e.usedBy}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => toggle(e.email)} className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium", e.used ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                  {e.used ? "Usada" : "Disponible"}
+                </button>
+                <button onClick={() => remove(e.email)} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}

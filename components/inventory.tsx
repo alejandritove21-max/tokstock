@@ -3,18 +3,21 @@
 import { useState } from "react"
 import { Search, CheckSquare, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useStore, type Account } from "@/lib/store"
+import { useStore, today, type Account } from "@/lib/store"
 import { AccountCard } from "./account-card"
 
 const statusFilters = ["Todas", "Disponibles", "Vendidas", "Descalif."] as const
 
 export function Inventory() {
-  const { accounts, categories, notify } = useStore()
+  const { accounts, categories, notify, updateAccount } = useStore()
   const [search, setSearch] = useState("")
   const [activeStatus, setActiveStatus] = useState<string>("Todas")
   const [activeCats, setActiveCats] = useState<string[]>([])
   const [selectionMode, setSelectionMode] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
+  const [batchSell, setBatchSell] = useState(false)
+  const [batchBuyer, setBatchBuyer] = useState("")
+  const [batchPrice, setBatchPrice] = useState("")
 
   const statusMap: Record<string, string> = {
     Disponibles: "available",
@@ -117,13 +120,113 @@ export function Inventory() {
 
       {/* Selection Actions */}
       {selectionMode && selected.length > 0 && (
-        <div className="flex gap-2">
-          <button onClick={copyLinks} className="flex-1 rounded-xl bg-secondary py-2.5 text-xs font-medium text-foreground">
-            Copiar links ({selected.length})
-          </button>
-          <button onClick={() => { setSelected(filtered.map(a => a.id)) }} className="rounded-xl bg-secondary px-4 py-2.5 text-xs font-medium text-muted-foreground">
-            Todas
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button onClick={copyLinks} className="flex-1 rounded-xl bg-secondary py-2.5 text-xs font-medium text-foreground">
+              🔗 Links ({selected.length})
+            </button>
+            <button
+              onClick={async () => {
+                // Share images
+                const accs = filtered.filter(a => selected.includes(a.id) && a.screenshot)
+                if (accs.length === 0) { notify("No hay imágenes para compartir", "error"); return }
+                if (navigator.share && navigator.canShare) {
+                  try {
+                    const files = await Promise.all(accs.map(async a => {
+                      const res = await fetch(a.screenshot)
+                      const blob = await res.blob()
+                      return new File([blob], `${a.username}.jpg`, { type: "image/jpeg" })
+                    }))
+                    if (navigator.canShare({ files })) {
+                      await navigator.share({ files })
+                      return
+                    }
+                  } catch (e: any) { if (e.name === "AbortError") return }
+                }
+                notify("No se pueden compartir imágenes en este dispositivo", "error")
+              }}
+              className="flex-1 rounded-xl bg-secondary py-2.5 text-xs font-medium text-foreground"
+            >
+              📷 Imágenes ({selected.length})
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setBatchSell(true)}
+              className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-medium text-primary-foreground"
+            >
+              💰 Vender ({selected.length})
+            </button>
+            <button
+              onClick={async () => {
+                const todayStr = today()
+                for (const id of selected) {
+                  const acc = accounts.find(a => a.id === id)
+                  if (acc && acc.status === "available") {
+                    await updateAccount(id, { ...acc, status: "disqualified", disqualifiedDate: todayStr })
+                  }
+                }
+                notify(`${selected.length} cuentas descalificadas`)
+                setSelected([])
+                setSelectionMode(false)
+              }}
+              className="rounded-xl bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive"
+            >
+              ❌ Descalif.
+            </button>
+            <button onClick={() => { setSelected(filtered.map(a => a.id)) }} className="rounded-xl bg-secondary px-4 py-2.5 text-xs font-medium text-muted-foreground">
+              Todas
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Sell Modal */}
+      {batchSell && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm" onClick={() => setBatchSell(false)}>
+          <div className="w-full max-w-sm animate-slide-up rounded-2xl border border-border bg-card p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="mb-4 text-lg font-bold">Vender {selected.length} cuentas</h3>
+            <input
+              placeholder="Nombre del comprador"
+              value={batchBuyer}
+              onChange={e => setBatchBuyer(e.target.value)}
+              className="mb-3 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
+            <input
+              type="number"
+              placeholder="Precio por cuenta ($)"
+              value={batchPrice}
+              onChange={e => setBatchPrice(e.target.value)}
+              className="mb-4 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setBatchSell(false)} className="flex-1 rounded-xl bg-secondary py-3 font-medium text-muted-foreground">Cancelar</button>
+              <button
+                onClick={async () => {
+                  if (!batchBuyer.trim() || !batchPrice) { notify("Completa todos los campos", "error"); return }
+                  const price = Number(batchPrice)
+                  const todayStr = today()
+                  let credsList = ""
+                  for (const id of selected) {
+                    const acc = accounts.find(a => a.id === id)
+                    if (acc && acc.status === "available") {
+                      const profit = price - acc.purchasePrice
+                      await updateAccount(id, { ...acc, status: "sold", realSalePrice: price, profit, soldDate: todayStr, buyer: batchBuyer.trim() })
+                      credsList += `@${acc.username}\nEmail: ${acc.email}\nPass TikTok: ${acc.tiktokPassword}\nPass Email: ${acc.emailPasswordSame ? acc.tiktokPassword : acc.emailPassword}\n\n`
+                    }
+                  }
+                  try { await navigator.clipboard.writeText(credsList) } catch {}
+                  notify(`${selected.length} cuentas vendidas · Credenciales copiadas`)
+                  setBatchSell(false)
+                  setSelected([])
+                  setSelectionMode(false)
+                }}
+                className="flex-1 rounded-xl bg-primary py-3 font-medium text-primary-foreground"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

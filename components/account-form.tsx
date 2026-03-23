@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Camera, ChevronRight, Check, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore, formatFollowers, formatCurrency } from "@/lib/store"
@@ -16,6 +16,9 @@ export function AccountForm() {
   const [img2, setImg2] = useState("")
   const [analyzing, setAnalyzing] = useState(false)
   const [aiError, setAiError] = useState("")
+  const [aiResult, setAiResult] = useState<any>(null)
+  const [verifyStatus, setVerifyStatus] = useState<"idle" | "checking" | "match" | "mismatch" | "error">("idle")
+  const [verifyData, setVerifyData] = useState<any>(null)
   const [dupWarning, setDupWarning] = useState("")
 
   const [form, setForm] = useState({
@@ -58,29 +61,47 @@ export function AccountForm() {
   })
 
   // ── Collage ──
-  const createCollage = useCallback(() => {
+  useEffect(() => {
     if (!img1 || !img2) return
-    const imgA = new Image(); const imgB = new Image()
-    let loaded = 0
-    const onLoad = () => {
-      if (++loaded < 2) return
-      const canvas = document.createElement("canvas")
-      const W = 800
-      const hA = Math.round(imgA.height * (W / 2) / imgA.width)
-      const hB = Math.round(imgB.height * (W / 2) / imgB.width)
-      const H = Math.max(hA, hB)
-      canvas.width = W; canvas.height = H
-      const ctx = canvas.getContext("2d")!
-      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H)
-      ctx.drawImage(imgA, 0, (H - hA) / 2, W / 2, hA)
-      ctx.drawImage(imgB, W / 2, (H - hB) / 2, W / 2, hB)
-      upd("screenshot", canvas.toDataURL("image/jpeg", 0.75))
-    }
-    imgA.onload = onLoad; imgB.onload = onLoad
-    imgA.src = img1; imgB.src = img2
-  }, [img1, img2])
+    
+    const imgA = new Image()
+    const imgB = new Image()
+    let loadedCount = 0
+    let cancelled = false
 
-  useEffect(() => { if (img1 && img2) createCollage() }, [img1, img2, createCollage])
+    const tryCreateCollage = () => {
+      loadedCount++
+      if (loadedCount < 2 || cancelled) return
+      
+      try {
+        const canvas = document.createElement("canvas")
+        const W = 800
+        const hA = Math.round(imgA.height * (W / 2) / imgA.width)
+        const hB = Math.round(imgB.height * (W / 2) / imgB.width)
+        const H = Math.max(hA, hB)
+        canvas.width = W
+        canvas.height = H
+        const ctx = canvas.getContext("2d")!
+        ctx.fillStyle = "#000"
+        ctx.fillRect(0, 0, W, H)
+        ctx.drawImage(imgA, 0, Math.round((H - hA) / 2), W / 2, hA)
+        ctx.drawImage(imgB, W / 2, Math.round((H - hB) / 2), W / 2, hB)
+        const collageData = canvas.toDataURL("image/jpeg", 0.75)
+        setForm(f => ({ ...f, screenshot: collageData }))
+      } catch (e) {
+        console.error("Collage error:", e)
+      }
+    }
+
+    imgA.onload = tryCreateCollage
+    imgB.onload = tryCreateCollage
+    imgA.onerror = () => console.error("Failed to load img1")
+    imgB.onerror = () => console.error("Failed to load img2")
+    imgA.src = img1
+    imgB.src = img2
+
+    return () => { cancelled = true }
+  }, [img1, img2])
 
   // ── AI ──
   const analyzeWithAI = async () => {
@@ -88,12 +109,28 @@ export function AccountForm() {
     if (!provider) { setAiError("No hay IA configurada. Ve a Ajustes."); return }
     const imageToAnalyze = img1 || form.screenshot
     if (!imageToAnalyze) { setAiError("Sube una imagen primero."); return }
-    setAnalyzing(true); setAiError("")
+    setAnalyzing(true); setAiError(""); setAiResult(null)
     try {
-      const base64 = imageToAnalyze.split(",")[1]
+      // Compress for AI but keep readable (800px max height for profile screenshots)
+      const compressForAI = (dataUrl: string): Promise<string> => new Promise(resolve => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement("canvas")
+          const MAX = 800
+          let w = img.width, h = img.height
+          if (h > MAX) { w = Math.round(w * MAX / h); h = MAX }
+          if (w > MAX) { h = Math.round(h * MAX / w); w = MAX }
+          canvas.width = w; canvas.height = h
+          canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
+          resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1])
+        }
+        img.src = dataUrl
+      })
+
+      const base64 = await compressForAI(imageToAnalyze)
       let prov = "openai"
-      if (provider.name.includes("Gemini")) prov = "gemini"
-      if (provider.name.includes("Claude")) prov = "claude"
+      if (provider.name.toLowerCase().includes("claude") || provider.name.toLowerCase().includes("anthropic")) prov = "claude"
+
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 30000)
       const res = await fetch("/api/analyze", {
@@ -103,16 +140,65 @@ export function AccountForm() {
         signal: controller.signal,
       })
       clearTimeout(timeout)
-      if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      if (data.username) { const u = data.username.replace("@", ""); upd("username", u); upd("profileLink", `https://www.tiktok.com/@${u}`); checkDuplicate("username", u) }
+      
+      // Set all detected fields
+      if (data.username) { 
+        const u = data.username.replace("@", "")
+        upd("username", u)
+        upd("profileLink", `https://www.tiktok.com/@${u}`)
+        checkDuplicate("username", u)
+      }
       if (data.profileName) upd("profileName", data.profileName)
       if (data.followers) upd("followers", data.followers.toString())
       if (data.niche) upd("niche", data.niche)
-      notify("Datos extraídos con IA")
+      
+      setAiResult(data) // Store for verification display
+      
+      // Verify username by checking TikTok profile
+      if (data.username) {
+        setVerifyStatus("checking")
+        try {
+          const vRes = await fetch("/api/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: data.username }),
+          })
+          const vData = await vRes.json()
+          setVerifyData(vData)
+          
+          if (vData.verified) {
+            // Compare followers if available
+            if (vData.followers && data.followers) {
+              const aiFollowers = Number(data.followers)
+              const realFollowers = vData.followers
+              const diff = Math.abs(aiFollowers - realFollowers) / Math.max(aiFollowers, realFollowers, 1)
+              if (diff < 0.3) {
+                setVerifyStatus("match")
+              } else {
+                setVerifyStatus("mismatch")
+                // Auto-correct followers from real data
+                upd("followers", realFollowers.toString())
+              }
+            } else {
+              setVerifyStatus("match")
+            }
+            // Auto-correct profile name if we got it
+            if (vData.profileName && !data.profileName) {
+              upd("profileName", vData.profileName)
+            }
+          } else {
+            setVerifyStatus("mismatch")
+          }
+        } catch {
+          setVerifyStatus("error")
+        }
+      }
+      
+      notify("Datos extraídos — Verifica que estén correctos")
     } catch (e: any) {
-      setAiError(e.name === "AbortError" ? "La IA tardó demasiado." : `Error: ${e.message}`)
+      setAiError(e.name === "AbortError" ? "La IA tardó demasiado. Intenta de nuevo." : e.message || "Error desconocido")
     }
     setAnalyzing(false)
   }
@@ -181,50 +267,100 @@ export function AccountForm() {
           <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-lg font-semibold">Capturas de Pantalla</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Sube perfil y programa de recompensas</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {!img1 && !img2 ? "Selecciona las 2 capturas a la vez (perfil + recompensas)" : img1 && img2 ? "Collage listo" : "Sube la segunda imagen"}
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {/* Image 1: Profile */}
-              <div>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Perfil</p>
-                {img1 ? (
-                  <div className="relative">
-                    <img src={img1} className="h-36 w-full rounded-xl border border-border object-cover" />
-                    <button onClick={() => { setImg1(""); upd("screenshot", "") }} className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-destructive text-white text-xs">✕</button>
-                  </div>
-                ) : (
-                  <label className="flex h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border transition-all hover:border-primary">
-                    <span className="text-2xl">📱</span>
-                    <span className="mt-1 text-[10px] text-muted-foreground">Perfil</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => { if (e.target.files?.[0]) setImg1(await loadImage(e.target.files[0])) }} />
-                  </label>
-                )}
-              </div>
+            {/* Multi-file upload button */}
+            {(!img1 || !img2) && (
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-secondary/30 py-12 transition-all active:scale-[0.98]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
+                  <span className="text-3xl">📷</span>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium">Seleccionar imágenes</p>
+                  <p className="text-sm text-muted-foreground">Toca y selecciona las 2 capturas</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = e.target.files
+                    if (!files || files.length === 0) return
+                    
+                    if (files.length >= 2) {
+                      // Load both images
+                      const loaded1 = await loadImage(files[0])
+                      const loaded2 = await loadImage(files[1])
+                      
+                      // Auto-detect: profile screenshot is usually taller (more height ratio)
+                      // We check which image has a profile-like aspect ratio
+                      const getAspect = (dataUrl: string): Promise<number> => new Promise(resolve => {
+                        const img = new Image()
+                        img.onload = () => resolve(img.height / img.width)
+                        img.src = dataUrl
+                      })
+                      
+                      const aspect1 = await getAspect(loaded1)
+                      const aspect2 = await getAspect(loaded2)
+                      
+                      // The taller image (higher h/w ratio) is the profile
+                      if (aspect1 >= aspect2) {
+                        setImg1(loaded1) // profile (taller)
+                        setImg2(loaded2) // rewards
+                      } else {
+                        setImg1(loaded2) // profile (taller)
+                        setImg2(loaded1) // rewards
+                      }
+                    } else {
+                      // Single file - put it as img1 if empty, else img2
+                      const loaded = await loadImage(files[0])
+                      if (!img1) setImg1(loaded)
+                      else setImg2(loaded)
+                    }
+                    // Reset input so same file can be selected again
+                    e.target.value = ""
+                  }}
+                />
+              </label>
+            )}
 
-              {/* Image 2: Rewards */}
-              <div>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Recompensas</p>
-                {img2 ? (
-                  <div className="relative">
-                    <img src={img2} className="h-36 w-full rounded-xl border border-border object-cover" />
-                    <button onClick={() => { setImg2(""); if (img1) upd("screenshot", img1) }} className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-destructive text-white text-xs">✕</button>
-                  </div>
-                ) : (
-                  <label className="flex h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border transition-all hover:border-primary">
-                    <span className="text-2xl">💰</span>
-                    <span className="mt-1 text-[10px] text-muted-foreground">Recompensas</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => { if (e.target.files?.[0]) setImg2(await loadImage(e.target.files[0])) }} />
-                  </label>
-                )}
+            {/* Preview both images */}
+            {(img1 || img2) && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">📱 Perfil</p>
+                  {img1 ? (
+                    <div className="relative">
+                      <img src={img1} className="h-36 w-full rounded-xl border border-border object-cover" />
+                      <button onClick={() => { setImg1(""); setForm(f => ({ ...f, screenshot: "" })) }} className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-destructive text-white text-xs">✕</button>
+                    </div>
+                  ) : (
+                    <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">Pendiente</div>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">💰 Recompensas</p>
+                  {img2 ? (
+                    <div className="relative">
+                      <img src={img2} className="h-36 w-full rounded-xl border border-border object-cover" />
+                      <button onClick={() => { setImg2(""); if (img1) setForm(f => ({ ...f, screenshot: img1 })) }} className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-destructive text-white text-xs">✕</button>
+                    </div>
+                  ) : (
+                    <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">Pendiente</div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Collage preview */}
             {form.screenshot && img1 && img2 && (
               <div>
-                <p className="mb-1.5 text-[10px] font-semibold text-primary">✅ Collage creado</p>
-                <img src={form.screenshot} className="h-28 w-full rounded-xl border border-border object-cover" />
+                <p className="mb-1.5 text-[10px] font-semibold text-primary">✅ Collage creado automáticamente</p>
+                <img src={form.screenshot} className="h-28 w-full rounded-xl border border-primary/30 object-cover" />
               </div>
             )}
 
@@ -233,10 +369,56 @@ export function AccountForm() {
               <>
                 <button onClick={analyzeWithAI} disabled={analyzing} className={cn("flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-semibold transition-all", analyzing ? "bg-muted text-muted-foreground" : "bg-gradient-to-r from-violet-600 to-purple-700 text-white")}>
                   <Sparkles className="h-4 w-4" />
-                  {analyzing ? "Analizando..." : "Analizar con IA"}
+                  {analyzing ? "Analizando..." : aiResult ? "Re-analizar con IA" : "Analizar con IA"}
                 </button>
-                {aiError && <p className="rounded-xl bg-destructive/10 px-4 py-2 text-xs text-destructive">{aiError}</p>}
-                {!analyzing && form.username && <p className="rounded-xl bg-primary/10 px-4 py-2 text-xs text-primary">✅ @{form.username} · {formatFollowers(Number(form.followers))} seg. · {form.niche || "—"}</p>}
+                {aiError && <p className="rounded-xl bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive">{aiError}</p>}
+                
+                {/* AI Verification Card */}
+                {aiResult && !analyzing && (
+                  <div className={cn("rounded-xl border p-4", 
+                    verifyStatus === "match" ? "border-primary/30 bg-primary/5" :
+                    verifyStatus === "mismatch" ? "border-warning/30 bg-warning/5" :
+                    "border-primary/30 bg-primary/5"
+                  )}>
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-primary">
+                        {verifyStatus === "checking" ? "⏳ Verificando perfil..." :
+                         verifyStatus === "match" ? "✅ Perfil verificado" :
+                         verifyStatus === "mismatch" ? "⚠️ Verificación con diferencias" :
+                         verifyStatus === "error" ? "❓ No se pudo verificar" :
+                         "✅ Datos detectados"}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Usuario</span>
+                        <span className="font-mono text-xs font-semibold">@{form.username || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Nombre</span>
+                        <span className="text-xs font-medium">{form.profileName || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Seguidores (IA)</span>
+                        <span className="text-xs font-bold">{Number(form.followers).toLocaleString() || "0"}</span>
+                      </div>
+                      {verifyData?.followers > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">Seguidores (TikTok real)</span>
+                          <span className={cn("text-xs font-bold", verifyStatus === "match" ? "text-primary" : "text-warning")}>{verifyData.followers.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Nicho</span>
+                        <span className="text-xs">{form.niche || "—"}</span>
+                      </div>
+                    </div>
+                    {verifyStatus === "mismatch" && (
+                      <p className="mt-2 text-[10px] font-medium text-warning">⚠️ Los datos no coinciden exactamente. Revisa el username y seguidores.</p>
+                    )}
+                    <p className="mt-2 text-[10px] text-muted-foreground">Puedes corregir en el siguiente paso</p>
+                  </div>
+                )}
               </>
             )}
 

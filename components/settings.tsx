@@ -73,34 +73,71 @@ function AISettings({ onBack }: { onBack: () => void }) {
   const [editing, setEditing] = useState<number | null>(null)
   const [key, setKey] = useState("")
 
+  // Ensure we always have exactly 2 providers: ChatGPT and Claude
+  const ensureProviders = () => {
+    const defaults = [
+      { name: "ChatGPT (OpenAI)", key: "", active: false },
+      { name: "Claude (Anthropic)", key: "", active: false },
+    ]
+    if (!aiProviders || aiProviders.length === 0) {
+      setAiProviders(defaults)
+      return defaults
+    }
+    // Map existing keys to the fixed providers
+    const chatgpt = aiProviders.find(p => p.name.toLowerCase().includes("gpt") || p.name.toLowerCase().includes("openai"))
+    const claude = aiProviders.find(p => p.name.toLowerCase().includes("claude") || p.name.toLowerCase().includes("anthropic"))
+    const fixed = [
+      { name: "ChatGPT (OpenAI)", key: chatgpt?.key || "", active: chatgpt?.active || false },
+      { name: "Claude (Anthropic)", key: claude?.key || "", active: claude?.active || false },
+    ]
+    return fixed
+  }
+
+  const providers = ensureProviders()
+
   return (
     <div className="flex flex-col gap-4 px-4 pb-28 pt-4">
       <header className="flex items-center gap-3">
         <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="text-xl font-bold">Inteligencia Artificial</h1>
       </header>
-      {aiProviders.map((p, i) => (
+      <p className="text-xs text-muted-foreground">Solo un proveedor puede estar activo a la vez. Agrega tu API Key y actívalo.</p>
+      {providers.map((p, i) => (
         <div key={i} className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
-            <p className="font-medium">{p.name}</p>
-            <button onClick={() => { const updated = [...aiProviders]; updated[i] = { ...p, active: !p.active }; setAiProviders(updated) }}
+            <div className="flex items-center gap-2">
+              <img src={i === 0 ? "/chatgpt-icon.png" : "/claude-icon.png"} alt="" className="h-5 w-5" />
+              <p className="font-medium">{p.name}</p>
+            </div>
+            <button onClick={() => {
+              // Toggle - only one active at a time
+              const updated = providers.map((pr, j) => ({
+                ...pr,
+                active: j === i ? !pr.active : false,
+              }))
+              setAiProviders(updated)
+            }}
               className={cn("rounded-full px-3 py-1 text-xs font-medium", p.active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
               {p.active ? "Activo" : "Inactivo"}
             </button>
           </div>
+          {p.key && !editing && (
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground">{p.key.slice(0, 8)}...{p.key.slice(-4)}</p>
+          )}
           {editing === i ? (
             <div className="mt-3 flex gap-2">
-              <input placeholder="API Key..." value={key} onChange={e => setKey(e.target.value)} className="flex-1 rounded-lg border border-border bg-secondary px-3 py-2 text-xs focus:border-primary focus:outline-none" />
-              <button onClick={() => { const updated = [...aiProviders]; updated[i] = { ...p, key }; setAiProviders(updated); setEditing(null) }} className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground">Guardar</button>
+              <input placeholder={i === 0 ? "sk-..." : "sk-ant-..."} value={key} onChange={e => setKey(e.target.value)} className="flex-1 rounded-lg border border-border bg-secondary px-3 py-2 font-mono text-xs focus:border-primary focus:outline-none" />
+              <button onClick={() => {
+                const updated = providers.map((pr, j) => j === i ? { ...pr, key } : pr)
+                setAiProviders(updated)
+                setEditing(null)
+              }} className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground">Guardar</button>
             </div>
           ) : (
             <button onClick={() => { setKey(p.key); setEditing(i) }} className="mt-2 text-xs text-accent">{p.key ? "Cambiar API Key" : "Agregar API Key"}</button>
           )}
         </div>
       ))}
-      <button onClick={() => setAiProviders([...aiProviders, { name: "Nuevo proveedor", key: "", active: false }])} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground">
-        <Plus className="h-4 w-4" /> Agregar proveedor
-      </button>
     </div>
   )
 }
@@ -152,7 +189,7 @@ function WhatsAppEditor({ onBack }: { onBack: () => void }) {
         <button onClick={() => { setWhatsappTemplate(text); onBack() }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="text-xl font-bold">Formato WhatsApp</h1>
       </header>
-      <p className="text-xs text-muted-foreground">Variables: {"{username}"}, {"{followers}"}, {"{email}"}, {"{tiktokPassword}"}, {"{emailPassword}"}</p>
+      <p className="text-xs text-muted-foreground">Variables: {"{username}"}, {"{followers}"}, {"{niche}"}, {"{link}"}, {"{email}"}, {"{tiktokPassword}"}, {"{emailPassword}"}</p>
       <textarea rows={10} value={text} onChange={e => setText(e.target.value)} className="w-full resize-y rounded-xl border border-border bg-secondary p-4 text-sm focus:border-primary focus:outline-none" />
       <button onClick={() => { setWhatsappTemplate(text); onBack() }} className="w-full rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground">Guardar</button>
     </div>

@@ -13,6 +13,7 @@ import { EmailWarehouse } from "@/components/email-warehouse"
 import { SearchView } from "@/components/search-view"
 import { Settings } from "@/components/settings"
 import { Broadcast } from "@/components/broadcast"
+import { ChatBot } from "@/components/chatbot"
 import { Notification } from "@/components/notification"
 import { LoadingScreen } from "@/components/loading-screen"
 
@@ -25,6 +26,17 @@ export default function Home() {
   }, [])
 
   if (loading) return <LoadingScreen />
+
+  // Chatbot is fullscreen
+  if (activeTab === "chatbot") {
+    return (
+      <main className="h-screen bg-background">
+        <div className="mx-auto h-full max-w-lg">
+          <ChatBot />
+        </div>
+      </main>
+    )
+  }
 
   // If editing/creating account
   if (editingAccount !== null || activeTab === "nueva-cuenta") {
@@ -60,6 +72,7 @@ export default function Home() {
       case "metas": return <Goals />
       case "bodega": return <EmailWarehouse />
       case "difusion": return <Broadcast />
+      case "chatbot": return <ChatBot />
       default: return <Dashboard />
     }
   }

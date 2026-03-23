@@ -2,22 +2,20 @@
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { useStore, formatCurrency, venezuelaDate, toVenezuelaKey, today, type Account } from "@/lib/store"
+import { useStore, formatCurrency, today, toVenezuelaKey, venezuelaDaysAgo, isOnOrAfter, type Account } from "@/lib/store"
 
 const tabs = ["Diario", "Mensual", "Trimestral"] as const
 
 export function Reports() {
   const { accounts } = useStore()
   const [tab, setTab] = useState<string>("Diario")
-  const now = venezuelaDate()
   const todayKey = today()
 
   // ── Daily ──
   const dailyData = () => {
     const days: Record<string, { sold: Account[]; disq: Account[]; added: Account[] }> = {}
     for (let i = 0; i < 14; i++) {
-      const d = new Date(now); d.setDate(d.getDate() - i)
-      const key = d.toLocaleDateString("en-CA")
+      const key = venezuelaDaysAgo(i)
       days[key] = { sold: [], disq: [], added: [] }
     }
     accounts.forEach(a => {
@@ -35,10 +33,10 @@ export function Reports() {
 
   // ── Monthly ──
   const monthlyData = () => {
-    const start = new Date(now); start.setDate(start.getDate() - 30)
-    const sold = accounts.filter(a => a.status === "sold" && a.soldDate && new Date(a.soldDate) >= start)
-    const disq = accounts.filter(a => a.status === "disqualified" && a.disqualifiedDate && new Date(a.disqualifiedDate) >= start)
-    const added = accounts.filter(a => a.createdAt && new Date(a.createdAt) >= start)
+    const startKey = venezuelaDaysAgo(30)
+    const sold = accounts.filter(a => a.status === "sold" && isOnOrAfter(a.soldDate, startKey))
+    const disq = accounts.filter(a => a.status === "disqualified" && isOnOrAfter(a.disqualifiedDate, startKey))
+    const added = accounts.filter(a => isOnOrAfter(a.createdAt, startKey))
     const revenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
     const profit = sold.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
     const loss = disq.reduce((s, a) => s + (a.purchasePrice || 0), 0)
@@ -52,9 +50,9 @@ export function Reports() {
 
   // ── Quarterly ──
   const quarterlyData = () => {
-    const start = new Date(now); start.setDate(start.getDate() - 90)
-    const sold = accounts.filter(a => a.status === "sold" && a.soldDate && new Date(a.soldDate) >= start)
-    const disq = accounts.filter(a => a.status === "disqualified" && a.disqualifiedDate && new Date(a.disqualifiedDate) >= start)
+    const startKey = venezuelaDaysAgo(90)
+    const sold = accounts.filter(a => a.status === "sold" && isOnOrAfter(a.soldDate, startKey))
+    const disq = accounts.filter(a => a.status === "disqualified" && isOnOrAfter(a.disqualifiedDate, startKey))
     const revenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
     const profit = sold.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
     const loss = disq.reduce((s, a) => s + (a.purchasePrice || 0), 0)
@@ -95,7 +93,7 @@ export function Reports() {
             <div className="flex h-32 items-end justify-between gap-1">
               {daily.slice(0, 7).reverse().map((d, i) => {
                 const h = Math.max((Math.abs(d.net) / maxProfit) * 100, 5)
-                const dayName = new Date(d.date).toLocaleDateString("es", { weekday: "short", timeZone: "America/Caracas" })
+                const dayName = new Date(d.date + "T12:00:00").toLocaleDateString("es", { weekday: "short", timeZone: "America/Caracas" })
                 return (
                   <div key={i} className="flex flex-1 flex-col items-center gap-1">
                     <span className={cn("text-[9px] font-medium", d.net > 0 ? "text-primary" : d.net < 0 ? "text-destructive" : "text-muted-foreground")}>
@@ -112,7 +110,7 @@ export function Reports() {
           {/* Day list */}
           <div className="flex flex-col gap-2">
             {daily.map((d, i) => {
-              const dayStr = new Date(d.date).toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "short", timeZone: "America/Caracas" })
+              const dayStr = new Date(d.date + "T12:00:00").toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "short", timeZone: "America/Caracas" })
               const isToday = d.date === todayKey
               return (
                 <div key={i} className={cn("flex items-center justify-between rounded-xl border bg-card p-4", isToday ? "border-primary/30 bg-primary/5" : "border-border")}>

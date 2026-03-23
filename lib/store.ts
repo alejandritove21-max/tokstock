@@ -172,7 +172,7 @@ export const useStore = create<AppState>((set, get) => ({
   countries: DEFAULT_COUNTRIES,
   categories: DEFAULT_CATEGORIES,
   aiProviders: [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
-  whatsappTemplate: "Hola! Te comparto los datos de la cuenta:\n\n*Usuario:* {username}\n*Seguidores:* {followers}\n*Email:* {email}\n*Contraseña TikTok:* {tiktokPassword}\n*Contraseña Email:* {emailPassword}",
+  whatsappTemplate: "💵 *CUENTA TIKTOK MONETIZADA*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n\n📂 Nicho: {niche}\n🔗 Link: {link}\n\n📧 Email: {email}\n\n🔑 Contraseña TikTok: {tiktokPassword}\n\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No iniciar sesión en varios dispositivos\n• No usar VPN gratuitos\n• No hacer cambios bruscos de manera inmediata\n\n— TokStock 🔒",
   goals: [],
   emailWarehouse: [],
   darkMode: true,
@@ -246,16 +246,53 @@ export function today(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Caracas" })
 }
 
-export function venezuelaDate(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Caracas" }))
+// Get current date/time parts in Venezuela timezone
+export function venezuelaNow() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Caracas",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  })
+  return formatter.format(new Date())
+}
+
+// Format a date nicely in Venezuela timezone
+export function venezuelaDateStr(): string {
+  return new Date().toLocaleDateString("es-VE", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    timeZone: "America/Caracas",
+  })
 }
 
 // Convert any date string to Venezuela date key (YYYY-MM-DD)
 export function toVenezuelaKey(dateStr: string | null): string {
   if (!dateStr) return ""
   try {
-    return new Date(dateStr).toLocaleDateString("en-CA", { timeZone: "America/Caracas" })
+    // If it's a plain date like "2026-03-22", append noon to avoid UTC midnight shift
+    let d: Date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      d = new Date(dateStr + "T12:00:00")
+    } else {
+      d = new Date(dateStr)
+    }
+    if (isNaN(d.getTime())) return ""
+    return d.toLocaleDateString("en-CA", { timeZone: "America/Caracas" })
   } catch {
     return ""
   }
+}
+
+// Get Venezuela date N days ago as YYYY-MM-DD
+export function venezuelaDaysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toLocaleDateString("en-CA", { timeZone: "America/Caracas" })
+}
+
+// Check if a date string falls on or after a reference date key
+export function isOnOrAfter(dateStr: string | null, refKey: string): boolean {
+  if (!dateStr || !refKey) return false
+  const key = toVenezuelaKey(dateStr)
+  return key >= refKey
 }

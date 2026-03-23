@@ -35,8 +35,10 @@ export function AccountDetail() {
     setConfirmAction(null)
     // Open WhatsApp
     const msg = whatsappTemplate
-      .replace("{username}", a.username)
+      .replace("{username}", a.username || "")
       .replace("{followers}", formatFollowers(a.followers))
+      .replace("{niche}", a.niche || "—")
+      .replace("{link}", a.profileLink || "")
       .replace("{email}", a.email || "")
       .replace("{tiktokPassword}", a.tiktokPassword || "")
       .replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
@@ -228,7 +230,7 @@ export function AccountDetail() {
         {/* WhatsApp */}
         <button
           onClick={() => {
-            const msg = whatsappTemplate.replace("{username}", a.username).replace("{followers}", formatFollowers(a.followers)).replace("{email}", a.email || "").replace("{tiktokPassword}", a.tiktokPassword || "").replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
+            const msg = whatsappTemplate.replace("{username}", a.username || "").replace("{followers}", formatFollowers(a.followers)).replace("{niche}", a.niche || "—").replace("{link}", a.profileLink || "").replace("{email}", a.email || "").replace("{tiktokPassword}", a.tiktokPassword || "").replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
           }}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#25D366] to-[#1da855] py-3.5 font-semibold text-white transition-all active:scale-[0.98]"
