@@ -1,69 +1,68 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Radio, Settings, Trash2, Send, RefreshCw, Loader2, Check, Wifi, WifiOff, Copy, CheckSquare, Square, Edit, X } from "lucide-react"
+import { ArrowLeft, Settings, Trash2, Send, RefreshCw, Loader2, Check, Wifi, WifiOff, Copy, CheckSquare, Square, Edit, X, Plus, Power, PowerOff } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useStore, formatFollowers, formatCurrency } from "@/lib/store"
+import { useStore, formatFollowers, formatCurrency, type WhapiChannel } from "@/lib/store"
 
 export function Broadcast() {
   const { accounts, countries, setActiveTab, notify, whapiConfig, setWhapiConfig, sendToChannel, deleteFromChannel } = useStore()
   const [showConfig, setShowConfig] = useState(false)
   const [showTemplate, setShowTemplate] = useState(false)
   const [token, setToken] = useState(whapiConfig.token)
-  const [channelId, setChannelId] = useState(whapiConfig.channelId)
-  const [channelName, setChannelName] = useState(whapiConfig.channelName)
-  const [template, setTemplate] = useState(whapiConfig.broadcastTemplate || "💰 *CUENTA DISPONIBLE*\n\n👤 @{username}\n👥 {followers} seguidores\n{flag} {country}\n📂 {categories}\n💵 Precio: {price}\n\n🔗 {link}")
+  const [template, setTemplate] = useState(whapiConfig.broadcastTemplate || "")
+  const [newChannelId, setNewChannelId] = useState("")
+  const [newChannelName, setNewChannelName] = useState("")
   const [newsletters, setNewsletters] = useState<any[]>([])
   const [loadingNewsletters, setLoadingNewsletters] = useState(false)
   const [sending, setSending] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [sendingId, setSendingId] = useState<number | null>(null)
-  const [shared, setShared] = useState<number[]>([])
+  const [sendingId, setSendingId] = useState<any>(null)
+  const [shared, setShared] = useState<any[]>([])
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<any[]>([])
 
   const avail = accounts.filter(a => a.status === "available")
-  const isConnected = !!(whapiConfig.enabled && whapiConfig.token && whapiConfig.channelId)
-  const trackedCount = Object.keys(whapiConfig.messageMap).length
+  const activeChannels = whapiConfig.channels.filter(ch => ch.enabled)
+  const isConnected = !!(whapiConfig.token && activeChannels.length > 0)
+  const totalTracked = whapiConfig.channels.reduce((sum, ch) => sum + Object.keys(ch.messageMap).length, 0)
 
   const toggleSelect = (id: any) => {
     const strId = String(id)
-    setSelected(prev => prev.map(String).includes(strId) ? prev.filter(x => String(x) !== strId) : [...prev, id])
+    setSelected(prev => prev.map(String).includes(strId) ? prev.filter((x: any) => String(x) !== strId) : [...prev, id])
   }
 
   const selectAllTracked = () => {
-    const trackedIds = Object.keys(whapiConfig.messageMap)
-    setSelected(trackedIds as any[])
+    const allIds = new Set<string>()
+    whapiConfig.channels.forEach(ch => Object.keys(ch.messageMap).forEach(k => allIds.add(k)))
+    setSelected(Array.from(allIds))
   }
 
   // Load newsletters and groups
   const loadNewsletters = async () => {
-    if (!token) { notify("Ingresa tu token de Whapi", "error"); return }
+    if (!token) { notify("Ingresa tu token", "error"); return }
     setLoadingNewsletters(true)
     try {
       let allResults: any[] = []
       try {
         const res = await fetch("/api/whapi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "getNewsletters", token }) })
         const json = await res.json()
-        const nls = json.newsletters || []
-        allResults = [...allResults, ...nls.map((n: any) => ({ id: n.id, name: n.name || n.subject || n.title || "Canal", type: "newsletter" }))]
+        allResults = [...allResults, ...(json.newsletters || []).map((n: any) => ({ id: n.id, name: n.name || n.subject || "Canal", type: "newsletter" }))]
       } catch {}
       try {
         const res2 = await fetch("/api/whapi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "getGroups", token }) })
         const json2 = await res2.json()
-        const grps = json2.groups || []
-        allResults = [...allResults, ...grps.map((g: any) => ({ id: g.id || g.chat_id, name: g.name || g.chat_name || g.subject || g.title || "Grupo", type: "group" }))]
+        allResults = [...allResults, ...(json2.groups || []).map((g: any) => ({ id: g.id || g.chat_id, name: g.name || g.chat_name || g.subject || "Grupo", type: "group" }))]
       } catch {}
       setNewsletters(allResults)
-      notify(allResults.length > 0 ? `${allResults.length} canal(es)/grupo(s) encontrado(s)` : "No se encontraron. Pega el ID manualmente.", allResults.length > 0 ? "success" : "error")
+      notify(allResults.length > 0 ? `${allResults.length} encontrado(s)` : "No se encontraron. Agrega manual.", allResults.length > 0 ? "success" : "error")
     } catch (e: any) { notify(`Error: ${e.message}`, "error") }
     setLoadingNewsletters(false)
   }
 
-  const saveConfig = () => {
-    setWhapiConfig({ ...whapiConfig, token, channelId, channelName, enabled: !!(token && channelId) })
-    notify("Configuración guardada")
-    setShowConfig(false)
+  const saveToken = () => {
+    setWhapiConfig({ ...whapiConfig, token })
+    notify("Token guardado")
   }
 
   const saveTemplate = () => {
@@ -72,10 +71,26 @@ export function Broadcast() {
     setShowTemplate(false)
   }
 
-  const disconnect = () => {
-    setWhapiConfig({ token: "", channelId: "", channelName: "", enabled: false, broadcastTemplate: whapiConfig.broadcastTemplate, messageMap: {} })
-    setToken(""); setChannelId(""); setChannelName("")
-    notify("Desconectado del canal")
+  const addChannel = (id: string, name: string) => {
+    if (!id) return
+    if (whapiConfig.channels.find(ch => ch.id === id)) { notify("Canal ya agregado", "error"); return }
+    const newCh: WhapiChannel = { id, name: name || "Canal", enabled: true, messageMap: {} }
+    setWhapiConfig({ ...whapiConfig, channels: [...whapiConfig.channels, newCh] })
+    setNewChannelId("")
+    setNewChannelName("")
+    notify(`${name || "Canal"} agregado`)
+  }
+
+  const removeChannel = (id: string) => {
+    setWhapiConfig({ ...whapiConfig, channels: whapiConfig.channels.filter(ch => ch.id !== id) })
+    notify("Canal eliminado")
+  }
+
+  const toggleChannel = (id: string) => {
+    setWhapiConfig({
+      ...whapiConfig,
+      channels: whapiConfig.channels.map(ch => ch.id === id ? { ...ch, enabled: !ch.enabled } : ch)
+    })
   }
 
   const sendOne = async (acc: typeof avail[0]) => {
@@ -83,7 +98,7 @@ export function Broadcast() {
     await sendToChannel(acc)
     setShared(prev => [...prev, acc.id])
     setSendingId(null)
-    notify(`@${acc.username} enviada al canal`)
+    notify(`@${acc.username} enviada a ${activeChannels.length} canal(es)`)
   }
 
   const sendAll = async () => {
@@ -91,76 +106,70 @@ export function Broadcast() {
     setSending(true)
     let sent = 0
     for (const acc of avail) {
-      if (whapiConfig.messageMap[acc.id] || whapiConfig.messageMap[String(acc.id)]) continue
+      const alreadySent = activeChannels.every(ch => ch.messageMap[String(acc.id)])
+      if (alreadySent) continue
       await sendToChannel(acc)
       sent++
       setShared(prev => [...prev, acc.id])
       await new Promise(r => setTimeout(r, 800))
     }
-    notify(`${sent} cuenta(s) enviada(s) al canal`)
+    notify(`${sent} cuenta(s) enviada(s) a ${activeChannels.length} canal(es)`)
     setSending(false)
   }
 
-  // Fixed: snapshot the IDs first, delete via API, then clear map
   const deleteAll = async () => {
     if (!isConnected) return
     setDeleting(true)
-    const entries = Object.entries(whapiConfig.messageMap)
+    const allIds = new Set<string>()
+    whapiConfig.channels.forEach(ch => Object.keys(ch.messageMap).forEach(k => allIds.add(k)))
     let deleted = 0
-    for (const [accId, messageId] of entries) {
-      if (!messageId) continue
-      try {
-        await fetch("/api/whapi", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId }),
-        })
-        deleted++
-      } catch {}
-      await new Promise(r => setTimeout(r, 500))
+    for (const accId of allIds) {
+      for (const ch of activeChannels) {
+        const msgId = ch.messageMap[accId]
+        if (!msgId) continue
+        try {
+          await fetch("/api/whapi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId: msgId }) })
+        } catch {}
+        await new Promise(r => setTimeout(r, 300))
+      }
+      deleted++
     }
-    // Clear the entire map at once
-    setWhapiConfig({ ...whapiConfig, messageMap: {} })
+    setWhapiConfig({ ...whapiConfig, channels: whapiConfig.channels.map(ch => ({ ...ch, messageMap: {} })) })
     setShared([])
-    notify(`${deleted} mensaje(s) borrado(s) del canal`)
+    notify(`${deleted} cuenta(s) borrada(s) de todos los canales`)
     setDeleting(false)
   }
 
-  // Delete only selected accounts
   const deleteSelected = async () => {
     if (!isConnected || selected.length === 0) return
     setDeleting(true)
     let deleted = 0
-    const currentMap = { ...whapiConfig.messageMap }
+    const updatedChannels = whapiConfig.channels.map(ch => ({ ...ch, messageMap: { ...ch.messageMap } }))
     for (const accId of selected) {
       const key = String(accId)
-      const messageId = currentMap[key] || currentMap[accId]
-      if (!messageId) continue
-      try {
-        await fetch("/api/whapi", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId }),
-        })
-        delete currentMap[key]
-        delete currentMap[accId]
-        deleted++
-      } catch {}
-      await new Promise(r => setTimeout(r, 500))
+      for (const ch of updatedChannels) {
+        const msgId = ch.messageMap[key]
+        if (!msgId) continue
+        if (activeChannels.find(ac => ac.id === ch.id)) {
+          try {
+            await fetch("/api/whapi", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId: msgId }) })
+          } catch {}
+          await new Promise(r => setTimeout(r, 300))
+        }
+        delete ch.messageMap[key]
+      }
+      deleted++
     }
-    setWhapiConfig({ ...whapiConfig, messageMap: currentMap })
+    setWhapiConfig({ ...whapiConfig, channels: updatedChannels })
     setSelected([])
     setSelectMode(false)
-    notify(`${deleted} mensaje(s) borrado(s)`)
+    notify(`${deleted} cuenta(s) borrada(s)`)
     setDeleting(false)
   }
 
-  const copyInviteLink = () => {
-    if (channelId) {
-      const id = channelId.replace("@newsletter", "").replace("@g.us", "")
-      navigator.clipboard.writeText(`https://chat.whatsapp.com/${id}`)
-      notify("Link copiado")
-    }
+  const isInAnyChannel = (accId: any) => {
+    const key = String(accId)
+    return whapiConfig.channels.some(ch => ch.messageMap[key])
   }
 
   return (
@@ -171,7 +180,7 @@ export function Broadcast() {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold">Difusión</h1>
-          <p className="text-[10px] text-muted-foreground">{avail.length} disponibles · {trackedCount} en canal</p>
+          <p className="text-[10px] text-muted-foreground">{avail.length} disponibles · {activeChannels.length} canal(es) · {totalTracked} en canal</p>
         </div>
         <button onClick={() => setShowTemplate(!showTemplate)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
           <Edit className="h-4 w-4" />
@@ -181,15 +190,33 @@ export function Broadcast() {
         </button>
       </header>
 
-      {/* Connection Status */}
-      <div className={cn("flex items-center gap-3 rounded-xl border p-3", isConnected ? "border-primary/30 bg-primary/5" : "border-warning/30 bg-warning/5")}>
-        {isConnected ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-warning" />}
-        <div className="flex-1">
-          <p className="text-xs font-semibold">{isConnected ? `Conectado: ${whapiConfig.channelName || "Canal"}` : "No conectado"}</p>
-          <p className="text-[10px] text-muted-foreground">{isConnected ? `${trackedCount} mensajes activos en el canal` : "Configura Whapi.cloud para activar"}</p>
+      {/* Channel Status Cards */}
+      {whapiConfig.channels.length > 0 ? (
+        <div className="space-y-2">
+          {whapiConfig.channels.map(ch => (
+            <div key={ch.id} className={cn("flex items-center gap-3 rounded-xl border p-3", ch.enabled ? "border-primary/30 bg-primary/5" : "border-border bg-secondary/30")}>
+              <button onClick={() => toggleChannel(ch.id)} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", ch.enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
+                {ch.enabled ? <Power className="h-3.5 w-3.5" /> : <PowerOff className="h-3.5 w-3.5" />}
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-xs font-semibold">{ch.name}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{Object.keys(ch.messageMap).length} mensajes · {ch.id.substring(0, 20)}...</p>
+              </div>
+              <button onClick={() => removeChannel(ch.id)} className="rounded-lg bg-destructive/10 p-1.5 text-destructive">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
         </div>
-        {isConnected && <button onClick={copyInviteLink} className="rounded-lg bg-secondary p-2"><Copy className="h-3.5 w-3.5" /></button>}
-      </div>
+      ) : (
+        <div className={cn("flex items-center gap-3 rounded-xl border p-3 border-warning/30 bg-warning/5")}>
+          <WifiOff className="h-4 w-4 text-warning" />
+          <div>
+            <p className="text-xs font-semibold">No hay canales</p>
+            <p className="text-[10px] text-muted-foreground">Configura Whapi.cloud y agrega canales</p>
+          </div>
+        </div>
+      )}
 
       {/* Template Editor */}
       {showTemplate && (
@@ -198,12 +225,8 @@ export function Broadcast() {
             <h3 className="text-sm font-bold">Formato de Difusión</h3>
             <button onClick={() => setShowTemplate(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
           </div>
-          <textarea
-            value={template}
-            onChange={e => setTemplate(e.target.value)}
-            rows={8}
-            className="mb-3 w-full rounded-xl border border-border bg-secondary px-4 py-3 font-mono text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-          />
+          <textarea value={template} onChange={e => setTemplate(e.target.value)} rows={8}
+            className="mb-3 w-full rounded-xl border border-border bg-secondary px-4 py-3 font-mono text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
           <div className="mb-3 flex flex-wrap gap-1">
             {["{username}", "{followers}", "{country}", "{flag}", "{categories}", "{niche}", "{publico}", "{price}", "{purchasePrice}", "{estimatedPrice}", "{link}"].map(v => (
               <button key={v} onClick={() => setTemplate(prev => prev + v)} className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">{v}</button>
@@ -221,42 +244,57 @@ export function Broadcast() {
             <button onClick={() => setShowConfig(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
           </div>
           <div className="space-y-3">
+            {/* Token */}
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Token API</label>
-              <input type="password" placeholder="Tu token de Whapi.cloud" value={token} onChange={e => setToken(e.target.value)} className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+              <div className="flex gap-2">
+                <input type="password" placeholder="Tu token de Whapi.cloud" value={token} onChange={e => setToken(e.target.value)}
+                  className="flex-1 rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+                <button onClick={saveToken} className="rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">OK</button>
+              </div>
             </div>
+
+            {/* Add Channel */}
             <div>
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Canal / Grupo ID</label>
+                <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Agregar Canal / Grupo</label>
                 <button onClick={loadNewsletters} disabled={loadingNewsletters || !token} className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
                   {loadingNewsletters ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   Buscar
                 </button>
               </div>
-              {newsletters.length > 0 ? (
+
+              {newsletters.length > 0 && (
                 <div className="mb-2 space-y-1 max-h-40 overflow-y-auto">
-                  {newsletters.map((n: any) => (
-                    <button key={n.id} onClick={() => { setChannelId(n.id); setChannelName(n.name || "Canal") }}
-                      className={cn("flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all", channelId === n.id ? "border-primary bg-primary/5" : "border-border")}>
-                      <Radio className="h-3 w-3 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="truncate font-medium">{n.name}</p>
-                          <span className={cn("rounded px-1 py-0.5 text-[8px] font-bold", n.type === "newsletter" ? "bg-blue-500/10 text-blue-400" : "bg-primary/10 text-primary")}>{n.type === "newsletter" ? "CANAL" : "GRUPO"}</span>
+                  {newsletters.map((n: any) => {
+                    const alreadyAdded = whapiConfig.channels.find(ch => ch.id === n.id)
+                    return (
+                      <button key={n.id} onClick={() => !alreadyAdded && addChannel(n.id, n.name)}
+                        className={cn("flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all", alreadyAdded ? "border-primary/30 bg-primary/5 opacity-60" : "border-border")}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate font-medium">{n.name}</p>
+                            <span className={cn("rounded px-1 py-0.5 text-[8px] font-bold", n.type === "newsletter" ? "bg-blue-500/10 text-blue-400" : "bg-primary/10 text-primary")}>{n.type === "newsletter" ? "CANAL" : "GRUPO"}</span>
+                          </div>
+                          <p className="truncate text-[10px] text-muted-foreground">{n.id}</p>
                         </div>
-                        <p className="truncate text-[10px] text-muted-foreground">{n.id}</p>
-                      </div>
-                      {channelId === n.id && <Check className="h-3 w-3 text-primary" />}
-                    </button>
-                  ))}
+                        {alreadyAdded ? <Check className="h-3 w-3 text-primary" /> : <Plus className="h-3 w-3" />}
+                      </button>
+                    )
+                  })}
                 </div>
-              ) : (
-                <input placeholder="120363xxxx@g.us" value={channelId} onChange={e => setChannelId(e.target.value)} className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
               )}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={saveConfig} className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground">Guardar</button>
-              {isConnected && <button onClick={disconnect} className="rounded-xl bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">Desconectar</button>}
+
+              {/* Manual add */}
+              <div className="flex gap-2">
+                <input placeholder="ID: 120363xxxx@g.us" value={newChannelId} onChange={e => setNewChannelId(e.target.value)}
+                  className="flex-1 rounded-xl border border-border bg-secondary px-3 py-2.5 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+                <input placeholder="Nombre" value={newChannelName} onChange={e => setNewChannelName(e.target.value)}
+                  className="w-24 rounded-xl border border-border bg-secondary px-3 py-2.5 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+                <button onClick={() => addChannel(newChannelId, newChannelName)} className="rounded-xl bg-primary px-3 py-2.5 text-primary-foreground">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -268,12 +306,12 @@ export function Broadcast() {
           <button onClick={sendAll} disabled={sending || avail.length === 0}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {sending ? "Enviando..." : "Enviar todas"}
+            {sending ? "Enviando..." : `Enviar todas (${activeChannels.length})`}
           </button>
-          {trackedCount > 0 && (
+          {totalTracked > 0 && (
             <>
               <button onClick={() => { setSelectMode(!selectMode); setSelected([]) }}
-                className={cn("flex items-center justify-center gap-1 rounded-xl px-3 py-3 text-sm font-semibold transition-all", selectMode ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground")}>
+                className={cn("flex items-center justify-center rounded-xl px-3 py-3 text-sm font-semibold transition-all", selectMode ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground")}>
                 <CheckSquare className="h-4 w-4" />
               </button>
               <button onClick={deleteAll} disabled={deleting}
@@ -293,7 +331,7 @@ export function Broadcast() {
           <button onClick={deleteSelected} disabled={deleting}
             className="flex items-center gap-1 rounded-lg bg-destructive px-3 py-1.5 text-[10px] font-semibold text-white">
             {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            Borrar del canal
+            Borrar
           </button>
         </div>
       )}
@@ -311,7 +349,7 @@ export function Broadcast() {
       {/* Account List */}
       <div className="flex flex-col gap-2">
         {avail.map(a => {
-          const inChannel = !!whapiConfig.messageMap[a.id] || !!whapiConfig.messageMap[String(a.id)]
+          const inChannel = isInAnyChannel(a.id)
           const isSending = sendingId === a.id
           const done = shared.includes(a.id) || inChannel
           const flag = countries.find(c => c.name === a.country)?.emoji || ""
@@ -319,11 +357,8 @@ export function Broadcast() {
 
           return (
             <div key={a.id} onClick={() => selectMode && inChannel && toggleSelect(a.id)}
-              className={cn(
-                "flex items-center gap-3 rounded-xl border bg-card p-3 transition-all",
-                isSelected ? "border-destructive/50 bg-destructive/5" :
-                done ? "border-[#25D366]/30 bg-[#25D366]/5" : "border-border"
-              )}>
+              className={cn("flex items-center gap-3 rounded-xl border bg-card p-3 transition-all",
+                isSelected ? "border-destructive/50 bg-destructive/5" : done ? "border-[#25D366]/30 bg-[#25D366]/5" : "border-border")}>
               {selectMode && inChannel && (
                 <div className="shrink-0">
                   {isSelected ? <CheckSquare className="h-5 w-5 text-destructive" /> : <Square className="h-5 w-5 text-muted-foreground" />}
@@ -363,24 +398,6 @@ export function Broadcast() {
 
       {avail.length === 0 && (
         <div className="py-12 text-center text-sm text-muted-foreground">No hay cuentas disponibles</div>
-      )}
-
-      {/* Tracked Messages */}
-      {isConnected && trackedCount > 0 && !selectMode && (
-        <div className="rounded-xl border border-border/50 bg-secondary/30 p-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Mensajes en canal ({trackedCount})</p>
-          <div className="space-y-1">
-            {Object.entries(whapiConfig.messageMap).map(([accId, msgId]) => {
-              const acc = accounts.find(a => String(a.id) === String(accId))
-              return (
-                <div key={accId} className="flex items-center justify-between text-[10px]">
-                  <span className="text-muted-foreground">@{acc?.username || `ID:${accId}`}</span>
-                  <span className="font-mono text-[9px] text-muted-foreground/60 max-w-[150px] truncate">{msgId as string}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
       )}
     </div>
   )

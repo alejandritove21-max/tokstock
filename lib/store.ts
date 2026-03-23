@@ -53,14 +53,18 @@ export interface AIProvider {
   active: boolean
 }
 
+export interface WhapiChannel {
+  id: string
+  name: string
+  enabled: boolean
+  // Maps account ID -> WhatsApp message ID for deletion tracking
+  messageMap: Record<string, string>
+}
+
 export interface WhapiConfig {
   token: string
-  channelId: string
-  channelName: string
-  enabled: boolean
+  channels: WhapiChannel[]
   broadcastTemplate: string
-  // Maps account ID -> WhatsApp message ID for deletion tracking
-  messageMap: Record<number, string>
 }
 
 interface AppState {
@@ -222,16 +226,27 @@ export const useStore = create<AppState>((set, get) => ({
         db.getSetting("whapiConfig"),
       ])
       const val = (i: number) => results[i].status === "fulfilled" ? (results[i] as any).value : null
-      set({
-        countries: Array.isArray(val(0)) ? val(0) : DEFAULT_COUNTRIES,
-        categories: Array.isArray(val(1)) ? val(1) : DEFAULT_CATEGORIES,
-        aiProviders: Array.isArray(val(2)) ? val(2) : [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
-        whatsappTemplate: typeof val(3) === "string" ? val(3) : get().whatsappTemplate,
-        goals: Array.isArray(val(4)) ? val(4) : [],
-        emailWarehouse: Array.isArray(val(5)) ? val(5) : [],
-        darkMode: val(6) !== "light",
-        whapiConfig: val(7) && typeof val(7) === "object" ? val(7) : get().whapiConfig,
-      })
+        // Migrate old whapiConfig format to new multi-channel format
+        let whapiCfg = val(7)
+        if (whapiCfg && typeof whapiCfg === "object") {
+          if (!Array.isArray(whapiCfg.channels)) {
+            // Old format: { token, channelId, channelName, enabled, messageMap }
+            const oldChannels = whapiCfg.channelId ? [{ id: whapiCfg.channelId, name: whapiCfg.channelName || "Canal", enabled: whapiCfg.enabled || false, messageMap: whapiCfg.messageMap || {} }] : []
+            whapiCfg = { token: whapiCfg.token || "", channels: oldChannels, broadcastTemplate: whapiCfg.broadcastTemplate || get().whapiConfig.broadcastTemplate }
+          }
+        } else {
+          whapiCfg = get().whapiConfig
+        }
+        set({
+          countries: Array.isArray(val(0)) ? val(0) : DEFAULT_COUNTRIES,
+          categories: Array.isArray(val(1)) ? val(1) : DEFAULT_CATEGORIES,
+          aiProviders: Array.isArray(val(2)) ? val(2) : [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
+          whatsappTemplate: typeof val(3) === "string" ? val(3) : get().whatsappTemplate,
+          goals: Array.isArray(val(4)) ? val(4) : [],
+          emailWarehouse: Array.isArray(val(5)) ? val(5) : [],
+          darkMode: val(6) !== "light",
+          whapiConfig: whapiCfg,
+        })
     } catch (e) {
       console.error("Failed to load settings:", e)
     }
@@ -250,12 +265,13 @@ export const useStore = create<AppState>((set, get) => ({
   setDarkMode: (v) => { set({ darkMode: v }); db.setSetting("theme", v ? "dark" : "light") },
 
   // Whapi
-  whapiConfig: { token: "", channelId: "", channelName: "", enabled: false, broadcastTemplate: "💰 *CUENTA DISPONIBLE*\n\n👤 @{username}\n👥 {followers} seguidores\n{flag} {country}\n📂 {categories}\n💵 Precio: {price}\n\n🔗 {link}", messageMap: {} },
+  whapiConfig: { token: "", channels: [], broadcastTemplate: "💰 *CUENTA DISPONIBLE*\n\n👤 @{username}\n👥 {followers} seguidores\n{flag} {country}\n📂 {categories}\n💵 Precio: {price}\n\n🔗 {link}" },
   setWhapiConfig: (v) => { set({ whapiConfig: v }); db.setSetting("whapiConfig", v) },
 
   sendToChannel: async (acc) => {
     const { whapiConfig, countries } = get()
-    if (!whapiConfig.enabled || !whapiConfig.token || !whapiConfig.channelId) return
+    const activeChannels = whapiConfig.channels.filter(ch => ch.enabled)
+    if (!whapiConfig.token || activeChannels.length === 0) return
     try {
       const flag = countries.find(c => c.name === acc.country)?.emoji || ""
       const cats = (acc.categories || []).join(", ")
@@ -273,86 +289,73 @@ export const useStore = create<AppState>((set, get) => ({
         .replace("{estimatedPrice}", formatCurrency(acc.estimatedSalePrice))
         .replace("{publico}", acc.publicType || "—")
 
-      let json: any
+      let updatedChannels = [...whapiConfig.channels]
 
-      if (acc.screenshot) {
-        const res = await fetch("/api/whapi", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "sendImage",
-            token: whapiConfig.token,
-            channelId: whapiConfig.channelId,
-            caption,
-            imageBase64: acc.screenshot,
-          }),
-        })
-        json = await res.json()
-      } else {
-        const res = await fetch("/api/whapi", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "sendMessage",
-            token: whapiConfig.token,
-            channelId: whapiConfig.channelId,
-            body: caption,
-          }),
-        })
-        json = await res.json()
+      for (const ch of activeChannels) {
+        try {
+          let json: any
+          if (acc.screenshot) {
+            const res = await fetch("/api/whapi", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "sendImage", token: whapiConfig.token, channelId: ch.id, caption, imageBase64: acc.screenshot }),
+            })
+            json = await res.json()
+          } else {
+            const res = await fetch("/api/whapi", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "sendMessage", token: whapiConfig.token, channelId: ch.id, body: caption }),
+            })
+            json = await res.json()
+          }
+          let msgId = json.extractedId
+          if (!msgId && json._raw) msgId = json._raw.id || json._raw.message_id || json._raw.sent?.id
+          if (msgId) {
+            const idx = updatedChannels.findIndex(c => c.id === ch.id)
+            if (idx >= 0) updatedChannels[idx] = { ...updatedChannels[idx], messageMap: { ...updatedChannels[idx].messageMap, [String(acc.id)]: msgId } }
+          }
+        } catch (e) { console.error("Failed to send to channel", ch.name, e) }
+        await new Promise(r => setTimeout(r, 300))
       }
 
-      // Extract message ID - check extractedId first, then dig into _raw
-      let msgId = json.extractedId
-      if (!msgId && json._raw) {
-        msgId = json._raw.id || json._raw.message_id || json._raw.sent?.id
-      }
-      
-      console.log("[TokStock] Sent to channel, response:", JSON.stringify(json).substring(0, 300), "msgId:", msgId)
-      
-      if (msgId) {
-        const updated = { ...whapiConfig, messageMap: { ...whapiConfig.messageMap, [acc.id]: msgId } }
-        set({ whapiConfig: updated })
-        db.setSetting("whapiConfig", updated)
-      }
+      const updated = { ...whapiConfig, channels: updatedChannels }
+      set({ whapiConfig: updated })
+      db.setSetting("whapiConfig", updated)
     } catch (e) {
-      console.error("Failed to send to channel:", e)
+      console.error("Failed to send to channels:", e)
     }
   },
 
   deleteFromChannel: async (accountId) => {
     const { whapiConfig } = get()
-    if (!whapiConfig.enabled || !whapiConfig.token) return
-    // Account ID could be number or UUID string — try both
+    const activeChannels = whapiConfig.channels.filter(ch => ch.enabled)
+    if (!whapiConfig.token || activeChannels.length === 0) return
     const key = String(accountId)
-    const messageId = whapiConfig.messageMap[key] || whapiConfig.messageMap[accountId]
-    if (!messageId) {
-      console.log("[TokStock] No message ID for account", accountId, "keys:", Object.keys(whapiConfig.messageMap))
-      return
+    let updatedChannels = [...whapiConfig.channels]
+
+    for (const ch of activeChannels) {
+      const messageId = ch.messageMap[key]
+      if (!messageId) continue
+      try {
+        await fetch("/api/whapi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "deleteMessage", token: whapiConfig.token, messageId }),
+        })
+      } catch (e) { console.error("Failed to delete from", ch.name, e) }
+      const idx = updatedChannels.findIndex(c => c.id === ch.id)
+      if (idx >= 0) {
+        const newMap = { ...updatedChannels[idx].messageMap }
+        delete newMap[key]
+        updatedChannels[idx] = { ...updatedChannels[idx], messageMap: newMap }
+      }
+      await new Promise(r => setTimeout(r, 300))
     }
-    try {
-      console.log("[TokStock] Deleting message", messageId, "for account", accountId)
-      const res = await fetch("/api/whapi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "deleteMessage",
-          token: whapiConfig.token,
-          messageId,
-        }),
-      })
-      const json = await res.json()
-      console.log("[TokStock] Delete response:", JSON.stringify(json))
-      // Remove from map
-      const newMap = { ...whapiConfig.messageMap }
-      delete newMap[key]
-      delete newMap[accountId]
-      const updated = { ...whapiConfig, messageMap: newMap }
-      set({ whapiConfig: updated })
-      db.setSetting("whapiConfig", updated)
-    } catch (e) {
-      console.error("Failed to delete from channel:", e)
-    }
+
+    const updated = { ...whapiConfig, channels: updatedChannels }
+    set({ whapiConfig: updated })
+    db.setSetting("whapiConfig", updated)
   },
 
   // UI State
