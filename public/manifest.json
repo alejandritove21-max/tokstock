@@ -1,0 +1,11 @@
+{
+  "name": "TokStock",
+  "short_name": "TokStock",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d11",
+  "theme_color": "#0d0d11",
+  "icons": [
+    { "src": "/tiktok.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
