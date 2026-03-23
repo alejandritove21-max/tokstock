@@ -40,10 +40,18 @@ export async function POST(req: NextRequest) {
       const text = await res.text()
       try {
         const json = JSON.parse(text)
-        let list = []
+        let list: any[] = []
         if (Array.isArray(json)) list = json
         else if (json.groups && Array.isArray(json.groups)) list = json.groups
         else if (json.data && Array.isArray(json.data)) list = json.data
+        // Also try /chats endpoint filtered for groups
+        if (list.length === 0) {
+          const res2 = await fetch(`${WHAPI_BASE}/chats?count=100`, { headers })
+          const text2 = await res2.text()
+          const json2 = JSON.parse(text2)
+          const chats = Array.isArray(json2) ? json2 : json2.chats || json2.data || []
+          list = chats.filter((c: any) => c.id?.includes("@g.us") || c.type === "group")
+        }
         return NextResponse.json({ groups: list, raw: json })
       } catch {
         return NextResponse.json({ error: "Invalid response", raw: text }, { status: 500 })

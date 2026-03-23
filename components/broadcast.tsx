@@ -22,38 +22,50 @@ export function Broadcast() {
   const isConnected = whapiConfig.enabled && whapiConfig.token && whapiConfig.channelId
   const trackedCount = Object.keys(whapiConfig.messageMap).length
 
-  // Load newsletters from Whapi
+  // Load newsletters and groups from Whapi
   const loadNewsletters = async () => {
     if (!token) { notify("Ingresa tu token de Whapi", "error"); return }
     setLoadingNewsletters(true)
     try {
+      let allResults: any[] = []
+
       // Try newsletters first
-      const res = await fetch("/api/whapi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "getNewsletters", token }),
-      })
-      const json = await res.json()
+      try {
+        const res = await fetch("/api/whapi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getNewsletters", token }),
+        })
+        const json = await res.json()
+        const nls = json.newsletters || []
+        allResults = [...allResults, ...nls.map((n: any) => ({
+          id: n.id,
+          name: n.name || n.subject || n.title || "Canal",
+          type: "newsletter"
+        }))]
+      } catch {}
 
-      let list = json.newsletters || []
-
-      // If no newsletters, try groups
-      if (list.length === 0) {
+      // Also try groups
+      try {
         const res2 = await fetch("/api/whapi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "getGroups", token }),
         })
         const json2 = await res2.json()
-        const groups = json2.groups || []
-        list = [...list, ...groups]
-      }
+        const grps = json2.groups || []
+        allResults = [...allResults, ...grps.map((g: any) => ({
+          id: g.id || g.chat_id,
+          name: g.name || g.chat_name || g.subject || g.title || "Grupo",
+          type: "group"
+        }))]
+      } catch {}
 
-      setNewsletters(list)
-      if (list.length > 0) {
-        notify(`${list.length} canal(es) encontrado(s)`)
+      setNewsletters(allResults)
+      if (allResults.length > 0) {
+        notify(`${allResults.length} canal(es)/grupo(s) encontrado(s)`)
       } else {
-        notify("No se encontraron canales. Pega el ID manualmente.", "error")
+        notify("No se encontraron. Pega el ID manualmente.", "error")
       }
     } catch (e: any) {
       notify(`Error: ${e.message}`, "error")
@@ -207,7 +219,7 @@ export function Broadcast() {
                       key={n.id}
                       onClick={() => {
                         setChannelId(n.id)
-                        setChannelName(n.name || n.subject || "Canal")
+                        setChannelName(n.name || "Canal")
                       }}
                       className={cn(
                         "flex w-full items-center gap-2 rounded-lg border p-2 text-left text-xs transition-all",
@@ -216,10 +228,19 @@ export function Broadcast() {
                     >
                       <Radio className="h-3 w-3 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{n.name || n.subject || n.id}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate font-medium">{n.name}</p>
+                          <span className={cn("rounded px-1 py-0.5 text-[8px] font-bold",
+                            n.type === "newsletter" ? "bg-blue-500/10 text-blue-400" : "bg-primary/10 text-primary"
+                          )}>
+                            {n.type === "newsletter" ? "CANAL" : "GRUPO"}
+                          </span>
+                        </div>
                         <p className="truncate text-[10px] text-muted-foreground">{n.id}</p>
                       </div>
                       {channelId === n.id && <Check className="h-3 w-3 text-primary" />}
+                    </button>
+                  ))}
                     </button>
                   ))}
                 </div>
