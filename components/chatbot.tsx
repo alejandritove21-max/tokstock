@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Send, Bot, User, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useStore, formatCurrency, formatFollowers } from "@/lib/store"
+import { useStore, formatCurrency, formatFollowers, today } from "@/lib/store"
 
 interface Message {
   role: "user" | "assistant"
@@ -11,10 +11,9 @@ interface Message {
 }
 
 export function ChatBot() {
-  const { accounts, goals, emailWarehouse, categories, countries, setActiveTab } = useStore()
-  const { aiProviders } = useStore()
+  const { accounts, goals, emailWarehouse, categories, countries, setActiveTab, whatsappTemplate, aiProviders } = useStore()
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "¡Hola! Soy el asistente de TokStock. Puedo ayudarte con:\n\n• Info sobre tus cuentas disponibles\n• Estadísticas y reportes\n• Estado de la bodega de correos\n• Metas y progreso\n• Cualquier pregunta sobre la app\n\n¿En qué te puedo ayudar?" }
+    { role: "assistant", content: "¡Hola! Soy el asistente de TokStock. Tengo acceso completo a tu inventario. Puedo ayudarte con:\n\n• Info detallada de cualquier cuenta (credenciales, precios, fechas)\n• Estadísticas y reportes financieros\n• Estado de la bodega de correos\n• Metas y progreso\n• Recomendaciones de precios\n• Cualquier pregunta sobre la app\n\n¿En qué te puedo ayudar?" }
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -28,33 +27,80 @@ export function ChatBot() {
     const available = accounts.filter(a => a.status === "available")
     const sold = accounts.filter(a => a.status === "sold")
     const disq = accounts.filter(a => a.status === "disqualified")
+    const totalRevenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
     const totalProfit = sold.reduce((s, a) => s + ((a.realSalePrice || 0) - (a.purchasePrice || 0)), 0)
     const totalInvested = accounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)
+    const totalInvestedAvailable = available.reduce((s, a) => s + (a.purchasePrice || 0), 0)
+    const totalEstimatedValue = available.reduce((s, a) => s + (a.estimatedSalePrice || 0), 0)
     const emailsAvail = emailWarehouse.filter(e => !e.used).length
+    const emailsUsed = emailWarehouse.filter(e => e.used).length
 
-    const accountsList = available.slice(0, 20).map(a =>
-      `@${a.username} | ${formatFollowers(a.followers)} seg. | ${a.country} | ${(a.categories || []).join(", ")} | ${formatCurrency(a.estimatedSalePrice || a.purchasePrice)}`
+    // Full account details for available
+    const availableDetails = available.map(a =>
+      `@${a.username} | ${formatFollowers(a.followers)} seg | ${a.country} | ${(a.categories || []).join(", ")} | Nicho: ${a.niche || "—"} | Compra: ${formatCurrency(a.purchasePrice)} | Venta est.: ${formatCurrency(a.estimatedSalePrice)} | Email: ${a.email || "—"} | Link: ${a.profileLink || "—"} | Fecha: ${a.createdAt ? new Date(a.createdAt).toLocaleDateString("es") : "—"} | Notas: ${a.notes || "—"}`
     ).join("\n")
 
-    return `Eres el asistente de TokStock, una app de inventario de cuentas TikTok monetizadas. Responde en español, sé conciso y útil.
+    // Full account details for sold
+    const soldDetails = sold.map(a =>
+      `@${a.username} | ${formatFollowers(a.followers)} seg | ${a.country} | Compra: ${formatCurrency(a.purchasePrice)} | Venta: ${formatCurrency(a.realSalePrice)} | Ganancia: ${formatCurrency(a.profit)} | Comprador: ${a.buyer || "?"} | Fecha venta: ${a.soldDate || "—"}`
+    ).join("\n")
 
-DATOS ACTUALES DEL INVENTARIO:
+    // Disqualified details
+    const disqDetails = disq.map(a =>
+      `@${a.username} | ${formatFollowers(a.followers)} seg | ${a.country} | Compra: ${formatCurrency(a.purchasePrice)} | Fecha descalif.: ${a.disqualifiedDate || "—"}`
+    ).join("\n")
+
+    // Email warehouse details
+    const warehouseDetails = emailWarehouse.map(e =>
+      `${e.email} | ${e.used ? "USADA" : "DISPONIBLE"}`
+    ).join("\n")
+
+    // Goals details
+    const goalsDetails = goals.map(g =>
+      `Meta: ${g.title || g.type} | Objetivo: ${g.target} | Progreso: ${g.current}/${g.target} | Fecha límite: ${g.deadline || "—"}`
+    ).join("\n")
+
+    return `Eres el asistente de TokStock, una app de inventario de cuentas TikTok monetizadas. Responde en español, sé conciso y útil. Hoy es ${today()}.
+
+RESUMEN DEL INVENTARIO:
 - Cuentas disponibles: ${available.length}
 - Cuentas vendidas: ${sold.length}
 - Cuentas descalificadas: ${disq.length}
-- Total invertido: ${formatCurrency(totalInvested)}
-- Ganancia total: ${formatCurrency(totalProfit)}
-- Correos disponibles en bodega: ${emailsAvail}/${emailWarehouse.length}
+- Total cuentas: ${accounts.length}
+- Total invertido (todas): ${formatCurrency(totalInvested)}
+- Inversión en disponibles: ${formatCurrency(totalInvestedAvailable)}
+- Valor estimado disponibles: ${formatCurrency(totalEstimatedValue)}
+- Ganancia potencial disponibles: ${formatCurrency(totalEstimatedValue - totalInvestedAvailable)}
+- Ingresos por ventas: ${formatCurrency(totalRevenue)}
+- Ganancia total ventas: ${formatCurrency(totalProfit)}
+- Margen promedio: ${sold.length > 0 ? Math.round(totalProfit / sold.length) : 0}$/cuenta
+- Correos en bodega: ${emailWarehouse.length} total (${emailsAvail} disponibles, ${emailsUsed} usados)
 - Categorías: ${categories.join(", ")}
-- Países: ${countries.map(c => c.name).join(", ")}
+- Países: ${countries.map(c => `${c.emoji} ${c.name}`).join(", ")}
 - Metas activas: ${goals.length}
 
-CUENTAS DISPONIBLES:
-${accountsList || "No hay cuentas disponibles"}
+CUENTAS DISPONIBLES (${available.length}):
+${availableDetails || "Ninguna"}
 
-${sold.length > 0 ? `ÚLTIMAS VENTAS:\n${sold.slice(0, 5).map(a => `@${a.username} → ${a.buyer || "?"} por ${formatCurrency(a.realSalePrice)} (ganancia: ${formatCurrency(a.profit)})`).join("\n")}` : ""}
+CUENTAS VENDIDAS (${sold.length}):
+${soldDetails || "Ninguna"}
 
-Responde preguntas sobre el inventario, estadísticas, recomendaciones de precios, o cualquier duda sobre la app. Si te preguntan por una cuenta específica, busca en los datos. Sé directo y útil.`
+CUENTAS DESCALIFICADAS (${disq.length}):
+${disqDetails || "Ninguna"}
+
+BODEGA DE CORREOS (${emailWarehouse.length}):
+${warehouseDetails || "Vacía"}
+
+METAS:
+${goalsDetails || "Sin metas"}
+
+INSTRUCCIONES:
+- Tienes acceso COMPLETO al inventario con todos los datos
+- Si preguntan por una cuenta específica (@usuario), busca en los datos y da toda la info
+- Si preguntan por credenciales (email, contraseña), proporciónalas
+- Si preguntan por estadísticas, calcula con los datos reales
+- Si preguntan recomendaciones de precio, basa tu análisis en los datos de ventas previas
+- Sé directo, conciso y útil. Usa emojis moderadamente.`
   }
 
   const sendMessage = async () => {
@@ -75,7 +121,6 @@ Responde preguntas sobre el inventario, estadísticas, recomendaciones de precio
       const isClaude = provider.name.toLowerCase().includes("claude") || provider.name.toLowerCase().includes("anthropic")
       const context = buildContext()
 
-      // Build conversation history (skip the initial greeting)
       const history = messages
         .filter((m, i) => !(i === 0 && m.role === "assistant"))
         .map(m => ({ role: m.role, content: m.content }))
@@ -103,7 +148,6 @@ Responde preguntas sobre el inventario, estadísticas, recomendaciones de precio
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      {/* Header */}
       <header className="flex items-center gap-3 border-b border-border bg-card/80 px-4 py-3 backdrop-blur-xl">
         <button onClick={() => setActiveTab("inicio")} className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary">
           <ArrowLeft className="h-4 w-4" />
@@ -114,12 +158,11 @@ Responde preguntas sobre el inventario, estadísticas, recomendaciones de precio
           </div>
           <div>
             <p className="text-sm font-semibold">TokStock AI</p>
-            <p className="text-[10px] text-muted-foreground">{accounts.length} cuentas · Asistente</p>
+            <p className="text-[10px] text-muted-foreground">{accounts.length} cuentas · Acceso completo</p>
           </div>
         </div>
       </header>
 
-      {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg, i) => (
           <div key={i} className={cn("flex gap-2", msg.role === "user" ? "justify-end" : "justify-start")}>
@@ -155,7 +198,6 @@ Responde preguntas sobre el inventario, estadísticas, recomendaciones de precio
         )}
       </div>
 
-      {/* Input */}
       <div className="border-t border-border bg-card/80 p-3 backdrop-blur-xl safe-bottom">
         <div className="flex gap-2">
           <input

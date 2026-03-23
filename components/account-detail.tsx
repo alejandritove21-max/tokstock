@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Copy, Eye, EyeOff, Edit, Trash2, Check, X, DollarSign, Ban, RotateCcw, Loader2 } from "lucide-react"
+import { ArrowLeft, Copy, Eye, EyeOff, Edit, Trash2, Check, X, DollarSign, Ban, RotateCcw, Loader2, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore, formatCurrency, formatFollowers, today } from "@/lib/store"
 import { db } from "@/lib/supabase"
@@ -16,11 +16,17 @@ export function AccountDetail() {
   const [confirmAction, setConfirmAction] = useState<string | null>(null)
   const [sellPrice, setSellPrice] = useState("")
   const [sellBuyer, setSellBuyer] = useState("")
+  const [showImageModal, setShowImageModal] = useState(false)
 
   if (!a) return null
 
   const copy = async (text: string, label: string) => {
-    try { await navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(""), 2000) } catch {}
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(label)
+      notify(`${label} copiado`)
+      setTimeout(() => setCopied(""), 2000)
+    } catch {}
   }
 
   const handleSell = async () => {
@@ -28,12 +34,10 @@ export function AccountDetail() {
     if (!price || !sellBuyer.trim()) { notify("Ingresa precio y comprador", "error"); return }
     const profit = price - a.purchasePrice
     await updateAccount(a.id, { ...a, status: "sold", realSalePrice: price, profit, soldDate: today(), buyer: sellBuyer.trim() })
-    // Copy credentials
     const creds = `Email: ${a.email}\nContraseña TikTok: ${a.tiktokPassword}\nContraseña Email: ${a.emailPasswordSame ? a.tiktokPassword : a.emailPassword}`
     try { await navigator.clipboard.writeText(creds) } catch {}
     notify(`Vendida por ${formatCurrency(price)} · Ganancia: ${formatCurrency(profit)}`)
     setConfirmAction(null)
-    // Open WhatsApp
     const msg = whatsappTemplate
       .replace("{username}", a.username || "")
       .replace("{followers}", formatFollowers(a.followers))
@@ -98,7 +102,7 @@ export function AccountDetail() {
             <button
               onClick={() => {
                 if (!imgRevealed) { setImgRevealed(true); return }
-                window.open(loadedScreenshot, "_blank")
+                setShowImageModal(true)
               }}
               className="w-full"
             >
@@ -153,8 +157,34 @@ export function AccountDetail() {
           <div key={label} className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
             <span className="text-xs text-muted-foreground">{label}</span>
             <div className="flex items-center gap-2">
-              <span className="max-w-[180px] truncate text-right text-xs font-medium">{val}</span>
-              {label === "Link" && <button onClick={() => copy(val as string, "Link")} className="text-muted-foreground"><Copy className="h-3.5 w-3.5" /></button>}
+              {label === "Link" ? (
+                <>
+                  <a
+                    href={val as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="max-w-[150px] truncate text-right text-xs font-medium text-primary underline"
+                  >
+                    {val}
+                  </a>
+                  <button
+                    onClick={() => {
+                      window.open(val as string, "_blank")
+                    }}
+                    className="rounded-lg bg-primary/10 p-1.5 text-primary"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => copy(val as string, "Link")}
+                    className={cn("rounded-lg p-1.5", copied === "Link" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}
+                  >
+                    {copied === "Link" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  </button>
+                </>
+              ) : (
+                <span className="max-w-[180px] truncate text-right text-xs font-medium">{val}</span>
+              )}
             </div>
           </div>
         ))}
@@ -227,7 +257,6 @@ export function AccountDetail() {
 
       {/* Action Buttons */}
       <div className="space-y-2">
-        {/* WhatsApp */}
         <button
           onClick={() => {
             const msg = whatsappTemplate.replace("{username}", a.username || "").replace("{followers}", formatFollowers(a.followers)).replace("{niche}", a.niche || "—").replace("{link}", a.profileLink || "").replace("{email}", a.email || "").replace("{tiktokPassword}", a.tiktokPassword || "").replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
@@ -239,7 +268,6 @@ export function AccountDetail() {
           Enviar por WhatsApp
         </button>
 
-        {/* Sell / Restore / Edit */}
         {a.status === "available" && (
           <button onClick={() => setConfirmAction("sell")} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground transition-all active:scale-[0.98]">
             <DollarSign className="h-4 w-4" /> Vender
@@ -267,6 +295,27 @@ export function AccountDetail() {
           <Trash2 className="h-4 w-4" /> Eliminar
         </button>
       </div>
+
+      {/* Image Fullscreen Modal */}
+      {showImageModal && loadedScreenshot && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          onClick={() => setShowImageModal(false)}
+        >
+          <button
+            onClick={() => setShowImageModal(false)}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={loadedScreenshot}
+            alt=""
+            className="max-h-[85vh] max-w-full rounded-lg object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Confirmation Modals */}
       {confirmAction && (
