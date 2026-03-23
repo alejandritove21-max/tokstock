@@ -189,6 +189,8 @@ export const useStore = create<AppState>((set, get) => ({
     return updated
   },
   deleteAccount: async (id) => {
+    // Auto-delete from channel before removing
+    get().deleteFromChannel(id)
     await db.deleteAccount(id)
     set((s) => ({
       accounts: s.accounts.filter((a) => a.id !== id),
@@ -255,22 +257,43 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const flag = countries.find(c => c.name === acc.country)?.emoji || ""
       const cats = (acc.categories || []).join(", ")
-      const body = `💰 *CUENTA DISPONIBLE*\n\n👤 @${acc.username}\n👥 ${formatFollowers(acc.followers)} seguidores\n${flag} ${acc.country || "—"}${cats ? `\n📂 ${cats}` : ""}\n💵 Precio: ${formatCurrency(acc.estimatedSalePrice || acc.purchasePrice)}\n${acc.profileLink ? `\n🔗 ${acc.profileLink}` : ""}`
+      const caption = `💰 *CUENTA DISPONIBLE*\n\n👤 @${acc.username}\n👥 ${formatFollowers(acc.followers)} seguidores\n${flag} ${acc.country || "—"}${cats ? `\n📂 ${cats}` : ""}\n💵 Precio: ${formatCurrency(acc.estimatedSalePrice || acc.purchasePrice)}${acc.profileLink ? `\n\n🔗 ${acc.profileLink}` : ""}`
 
-      const res = await fetch("/api/whapi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "sendMessage",
-          token: whapiConfig.token,
-          channelId: whapiConfig.channelId,
-          body,
-        }),
-      })
-      const json = await res.json()
-      if (json.id) {
-        // Store message ID mapped to account ID
-        const updated = { ...whapiConfig, messageMap: { ...whapiConfig.messageMap, [acc.id]: json.id } }
+      let json: any
+
+      if (acc.screenshot) {
+        // Send image with caption
+        const res = await fetch("/api/whapi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "sendImage",
+            token: whapiConfig.token,
+            channelId: whapiConfig.channelId,
+            caption,
+            imageBase64: acc.screenshot,
+          }),
+        })
+        json = await res.json()
+      } else {
+        // Send text only
+        const res = await fetch("/api/whapi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "sendMessage",
+            token: whapiConfig.token,
+            channelId: whapiConfig.channelId,
+            body: caption,
+          }),
+        })
+        json = await res.json()
+      }
+
+      // Store message ID for later deletion
+      const msgId = json.extractedId || json.message_id || json.id || json.sent?.id
+      if (msgId) {
+        const updated = { ...whapiConfig, messageMap: { ...whapiConfig.messageMap, [acc.id]: msgId } }
         set({ whapiConfig: updated })
         db.setSetting("whapiConfig", updated)
       }
