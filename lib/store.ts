@@ -86,6 +86,7 @@ interface AppState {
   aiProviders: AIProvider[]
   whatsappTemplate: string
   comboTemplate: string
+  comboSummaryTemplate: string
   goals: Goal[]
   emailWarehouse: WarehouseEmail[]
   darkMode: boolean
@@ -96,6 +97,7 @@ interface AppState {
   setAiProviders: (v: any) => void
   setWhatsappTemplate: (v: string) => void
   setComboTemplate: (v: string) => void
+  setComboSummaryTemplate: (v: string) => void
   setGoals: (v: Goal[]) => void
   setEmailWarehouse: (v: WarehouseEmail[]) => void
   setDarkMode: (v: boolean) => void
@@ -212,6 +214,7 @@ export const useStore = create<AppState>((set, get) => ({
   aiProviders: [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
   whatsappTemplate: "💵 *CUENTA TIKTOK MONETIZADA*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n\n📂 Nicho: {niche}\n🔗 Link: {link}\n\n📧 Email: {email}\n\n🔑 Contraseña TikTok: {tiktokPassword}\n\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No iniciar sesión en varios dispositivos\n• No usar VPN gratuitos\n• No hacer cambios bruscos de manera inmediata\n\n— TokStock 🔒",
   comboTemplate: "👤 @{username}\n📧 {email}\n🔑 TikTok: {tiktokPassword}\n🔑 Email: {emailPassword}\n💵 {price}\n",
+  comboSummaryTemplate: "━━━━━━━━━━━━━━━━━━\n📊 *RESUMEN COMBO*\n🔢 Cuentas: {count}\n💰 Total: {total}\n📈 Ganancia: {profit}\n👤 Comprador: {buyer}\n━━━━━━━━━━━━━━━━━━",
   goals: [],
   emailWarehouse: [],
   darkMode: true,
@@ -228,6 +231,7 @@ export const useStore = create<AppState>((set, get) => ({
         db.getSetting("theme"),
         db.getSetting("whapiConfig"),
         db.getSetting("comboTemplate"),
+        db.getSetting("comboSummaryTemplate"),
       ])
       const val = (i: number) => results[i].status === "fulfilled" ? (results[i] as any).value : null
         // Migrate old whapiConfig format to new multi-channel format
@@ -250,6 +254,7 @@ export const useStore = create<AppState>((set, get) => ({
           darkMode: val(6) !== "light",
           whapiConfig: whapiCfg,
           comboTemplate: typeof val(8) === "string" ? val(8) : get().comboTemplate,
+          comboSummaryTemplate: typeof val(9) === "string" ? val(9) : get().comboSummaryTemplate,
         })
     } catch (e) {
       console.error("Failed to load settings:", e)
@@ -265,6 +270,7 @@ export const useStore = create<AppState>((set, get) => ({
   setAiProviders: (v) => { set({ aiProviders: v }); db.setSetting("aiProviders", v) },
   setWhatsappTemplate: (v) => { set({ whatsappTemplate: v }); db.setSetting("whatsappTemplate", v) },
   setComboTemplate: (v) => { set({ comboTemplate: v }); db.setSetting("comboTemplate", v) },
+  setComboSummaryTemplate: (v) => { set({ comboSummaryTemplate: v }); db.setSetting("comboSummaryTemplate", v) },
   setGoals: (v) => { set({ goals: v }); db.setSetting("goals", v) },
   setEmailWarehouse: (v) => { set({ emailWarehouse: v }); db.setSetting("emailWarehouse", v) },
   setDarkMode: (v) => { set({ darkMode: v }); db.setSetting("theme", v ? "dark" : "light") },

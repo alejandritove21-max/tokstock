@@ -9,7 +9,7 @@ import { AccountCard } from "./account-card"
 const statusFilters = ["Todas", "Disponibles", "Vendidas", "Descalif."] as const
 
 export function Inventory() {
-  const { accounts, categories, notify, updateAccount, whatsappTemplate, comboTemplate, setComboTemplate } = useStore()
+  const { accounts, categories, notify, updateAccount, whatsappTemplate, comboTemplate, setComboTemplate, comboSummaryTemplate, setComboSummaryTemplate } = useStore()
   const [search, setSearch] = useState("")
   const [activeStatus, setActiveStatus] = useState<string>("Todas")
   const [activeCats, setActiveCats] = useState<string[]>([])
@@ -21,6 +21,7 @@ export function Inventory() {
   const [batchPrices, setBatchPrices] = useState<Record<string, string>>({})
   const [showComboTemplate, setShowComboTemplate] = useState(false)
   const [editComboTpl, setEditComboTpl] = useState(comboTemplate)
+  const [editSummaryTpl, setEditSummaryTpl] = useState(comboSummaryTemplate)
 
   const statusMap: Record<string, string> = {
     Disponibles: "available",
@@ -124,7 +125,13 @@ export function Inventory() {
       credsList += entry + "\n"
       count++
     }
-    credsList += `━━━━━━━━━━━━━━━━━━\n📊 *RESUMEN COMBO*\n🔢 Cuentas: ${count}\n💰 Total: ${formatCurrency(currentTotal)}\n📈 Ganancia: ${formatCurrency(totalProfit)}\n👤 Comprador: ${batchBuyer.trim()}\n━━━━━━━━━━━━━━━━━━`
+    const summaryTpl = comboSummaryTemplate || "━━━━━━━━━━━━━━━━━━\n📊 *RESUMEN COMBO*\n🔢 Cuentas: {count}\n💰 Total: {total}\n📈 Ganancia: {profit}\n👤 Comprador: {buyer}\n━━━━━━━━━━━━━━━━━━"
+    const summary = summaryTpl
+      .replace("{count}", count.toString())
+      .replace("{total}", formatCurrency(currentTotal))
+      .replace("{profit}", formatCurrency(totalProfit))
+      .replace("{buyer}", batchBuyer.trim())
+    credsList += summary
 
     // STEP 2: Open WhatsApp IMMEDIATELY (iOS fix)
     window.open(`https://wa.me/?text=${encodeURIComponent(credsList)}`, "_blank")
@@ -287,15 +294,25 @@ export function Inventory() {
             {showComboTemplate && (
               <div className="mb-3 rounded-xl border border-border bg-secondary/50 p-3">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Formato por cuenta</p>
-                <textarea value={editComboTpl} onChange={e => setEditComboTpl(e.target.value)} rows={5}
+                <textarea value={editComboTpl} onChange={e => setEditComboTpl(e.target.value)} rows={4}
                   className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] focus:border-primary focus:outline-none" />
-                <div className="mb-2 flex flex-wrap gap-1">
+                <div className="mb-3 flex flex-wrap gap-1">
                   {["{username}", "{email}", "{tiktokPassword}", "{emailPassword}", "{price}", "{followers}", "{country}", "{niche}", "{publico}", "{link}", "{categories}"].map(v => (
                     <button key={v} onClick={() => setEditComboTpl(prev => prev + v)} className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{v}</button>
                   ))}
                 </div>
-                <button onClick={() => { setComboTemplate(editComboTpl); setShowComboTemplate(false); notify("Formato combo guardado") }}
-                  className="w-full rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground">Guardar formato</button>
+
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Formato resumen</p>
+                <textarea value={editSummaryTpl} onChange={e => setEditSummaryTpl(e.target.value)} rows={4}
+                  className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] focus:border-primary focus:outline-none" />
+                <div className="mb-3 flex flex-wrap gap-1">
+                  {["{count}", "{total}", "{profit}", "{buyer}"].map(v => (
+                    <button key={v} onClick={() => setEditSummaryTpl(prev => prev + v)} className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-blue-400">{v}</button>
+                  ))}
+                </div>
+
+                <button onClick={() => { setComboTemplate(editComboTpl); setComboSummaryTemplate(editSummaryTpl); setShowComboTemplate(false); notify("Formatos guardados") }}
+                  className="w-full rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground">Guardar formatos</button>
               </div>
             )}
 
