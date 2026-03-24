@@ -85,6 +85,7 @@ interface AppState {
   categories: string[]
   aiProviders: AIProvider[]
   whatsappTemplate: string
+  comboTemplate: string
   goals: Goal[]
   emailWarehouse: WarehouseEmail[]
   darkMode: boolean
@@ -94,6 +95,7 @@ interface AppState {
   setCategories: (v: any) => void
   setAiProviders: (v: any) => void
   setWhatsappTemplate: (v: string) => void
+  setComboTemplate: (v: string) => void
   setGoals: (v: Goal[]) => void
   setEmailWarehouse: (v: WarehouseEmail[]) => void
   setDarkMode: (v: boolean) => void
@@ -209,6 +211,7 @@ export const useStore = create<AppState>((set, get) => ({
   categories: DEFAULT_CATEGORIES,
   aiProviders: [{ name: "OpenAI (GPT-4o)", key: "", active: false }],
   whatsappTemplate: "💵 *CUENTA TIKTOK MONETIZADA*\n\n👤 Usuario: @{username}\n👥 Seguidores: {followers}\n\n📂 Nicho: {niche}\n🔗 Link: {link}\n\n📧 Email: {email}\n\n🔑 Contraseña TikTok: {tiktokPassword}\n\n🔑 Contraseña Email: {emailPassword}\n\n⚠️ *INSTRUCCIONES:*\n• No iniciar sesión en varios dispositivos\n• No usar VPN gratuitos\n• No hacer cambios bruscos de manera inmediata\n\n— TokStock 🔒",
+  comboTemplate: "👤 @{username}\n📧 {email}\n🔑 TikTok: {tiktokPassword}\n🔑 Email: {emailPassword}\n💵 {price}\n",
   goals: [],
   emailWarehouse: [],
   darkMode: true,
@@ -224,13 +227,13 @@ export const useStore = create<AppState>((set, get) => ({
         db.getSetting("emailWarehouse"),
         db.getSetting("theme"),
         db.getSetting("whapiConfig"),
+        db.getSetting("comboTemplate"),
       ])
       const val = (i: number) => results[i].status === "fulfilled" ? (results[i] as any).value : null
         // Migrate old whapiConfig format to new multi-channel format
         let whapiCfg = val(7)
         if (whapiCfg && typeof whapiCfg === "object") {
           if (!Array.isArray(whapiCfg.channels)) {
-            // Old format: { token, channelId, channelName, enabled, messageMap }
             const oldChannels = whapiCfg.channelId ? [{ id: whapiCfg.channelId, name: whapiCfg.channelName || "Canal", enabled: whapiCfg.enabled || false, messageMap: whapiCfg.messageMap || {} }] : []
             whapiCfg = { token: whapiCfg.token || "", channels: oldChannels, broadcastTemplate: whapiCfg.broadcastTemplate || get().whapiConfig.broadcastTemplate }
           }
@@ -246,6 +249,7 @@ export const useStore = create<AppState>((set, get) => ({
           emailWarehouse: Array.isArray(val(5)) ? val(5) : [],
           darkMode: val(6) !== "light",
           whapiConfig: whapiCfg,
+          comboTemplate: typeof val(8) === "string" ? val(8) : get().comboTemplate,
         })
     } catch (e) {
       console.error("Failed to load settings:", e)
@@ -260,6 +264,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCategories: (v) => { set({ categories: v }); db.setSetting("categories", v) },
   setAiProviders: (v) => { set({ aiProviders: v }); db.setSetting("aiProviders", v) },
   setWhatsappTemplate: (v) => { set({ whatsappTemplate: v }); db.setSetting("whatsappTemplate", v) },
+  setComboTemplate: (v) => { set({ comboTemplate: v }); db.setSetting("comboTemplate", v) },
   setGoals: (v) => { set({ goals: v }); db.setSetting("goals", v) },
   setEmailWarehouse: (v) => { set({ emailWarehouse: v }); db.setSetting("emailWarehouse", v) },
   setDarkMode: (v) => { set({ darkMode: v }); db.setSetting("theme", v ? "dark" : "light") },

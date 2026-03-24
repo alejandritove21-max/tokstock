@@ -9,7 +9,7 @@ import { AccountCard } from "./account-card"
 const statusFilters = ["Todas", "Disponibles", "Vendidas", "Descalif."] as const
 
 export function Inventory() {
-  const { accounts, categories, notify, updateAccount, whatsappTemplate } = useStore()
+  const { accounts, categories, notify, updateAccount, whatsappTemplate, comboTemplate, setComboTemplate } = useStore()
   const [search, setSearch] = useState("")
   const [activeStatus, setActiveStatus] = useState<string>("Todas")
   const [activeCats, setActiveCats] = useState<string[]>([])
@@ -19,6 +19,8 @@ export function Inventory() {
   const [batchBuyer, setBatchBuyer] = useState("")
   const [batchTotalPrice, setBatchTotalPrice] = useState("")
   const [batchPrices, setBatchPrices] = useState<Record<string, string>>({})
+  const [showComboTemplate, setShowComboTemplate] = useState(false)
+  const [editComboTpl, setEditComboTpl] = useState(comboTemplate)
 
   const statusMap: Record<string, string> = {
     Disponibles: "available",
@@ -101,23 +103,36 @@ export function Inventory() {
     if (!batchBuyer.trim()) { notify("Ingresa el comprador", "error"); return }
     if (currentTotal <= 0) { notify("Ingresa los precios", "error"); return }
 
-    // STEP 1: Build credentials message BEFORE any async operations
+    // STEP 1: Build credentials message using comboTemplate
+    const tpl = comboTemplate || "👤 @{username}\n📧 {email}\n🔑 TikTok: {tiktokPassword}\n🔑 Email: {emailPassword}\n💵 {price}\n"
     let credsList = ""
     let count = 0
     for (const acc of selectedAccounts) {
       const price = Number(batchPrices[String(acc.id)] || 0)
-      credsList += `👤 @${acc.username}\n📧 Email: ${acc.email}\n🔑 Pass TikTok: ${acc.tiktokPassword}\n🔑 Pass Email: ${acc.emailPasswordSame ? acc.tiktokPassword : acc.emailPassword}\n💵 Precio: ${formatCurrency(price)}\n\n`
+      const entry = tpl
+        .replace("{username}", acc.username || "")
+        .replace("{followers}", formatFollowers(acc.followers))
+        .replace("{email}", acc.email || "")
+        .replace("{tiktokPassword}", acc.tiktokPassword || "")
+        .replace("{emailPassword}", acc.emailPasswordSame ? acc.tiktokPassword || "" : acc.emailPassword || "")
+        .replace("{price}", formatCurrency(price))
+        .replace("{country}", acc.country || "")
+        .replace("{niche}", acc.niche || "")
+        .replace("{link}", acc.profileLink || "")
+        .replace("{publico}", acc.publicType || "")
+        .replace("{categories}", (acc.categories || []).join(", "))
+      credsList += entry + "\n"
       count++
     }
-    credsList += `━━━━━━━━━━━━━━━━━━\n📊 RESUMEN COMBO\n🔢 Cuentas: ${count}\n💰 Total: ${formatCurrency(currentTotal)}\n📈 Ganancia: ${formatCurrency(totalProfit)}\n👤 Comprador: ${batchBuyer.trim()}\n━━━━━━━━━━━━━━━━━━`
+    credsList += `━━━━━━━━━━━━━━━━━━\n📊 *RESUMEN COMBO*\n🔢 Cuentas: ${count}\n💰 Total: ${formatCurrency(currentTotal)}\n📈 Ganancia: ${formatCurrency(totalProfit)}\n👤 Comprador: ${batchBuyer.trim()}\n━━━━━━━━━━━━━━━━━━`
 
-    // STEP 2: Open WhatsApp IMMEDIATELY (synchronous, from user click — iOS blocks async window.open)
+    // STEP 2: Open WhatsApp IMMEDIATELY (iOS fix)
     window.open(`https://wa.me/?text=${encodeURIComponent(credsList)}`, "_blank")
 
     // STEP 3: Copy to clipboard
     try { await navigator.clipboard.writeText(credsList) } catch {}
 
-    // STEP 4: Now do the async database updates
+    // STEP 4: Async database updates
     const todayStr = today()
     for (const acc of selectedAccounts) {
       const price = Number(batchPrices[String(acc.id)] || 0)
@@ -260,7 +275,29 @@ export function Inventory() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setBatchSell(false)}>
           <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto animate-slide-up rounded-2xl border border-border bg-card p-5" onClick={e => e.stopPropagation()}>
             <h3 className="mb-1 text-lg font-bold">Vender combo ({selectedAccounts.length})</h3>
-            <p className="mb-4 text-[10px] text-muted-foreground">Costo total de compra: {formatCurrency(totalPurchaseCost)}</p>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground">Costo total de compra: {formatCurrency(totalPurchaseCost)}</p>
+              <button onClick={() => { setEditComboTpl(comboTemplate); setShowComboTemplate(!showComboTemplate) }}
+                className="rounded-lg bg-secondary px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                {showComboTemplate ? "Cerrar" : "✏️ Formato"}
+              </button>
+            </div>
+
+            {/* Combo Template Editor */}
+            {showComboTemplate && (
+              <div className="mb-3 rounded-xl border border-border bg-secondary/50 p-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Formato por cuenta</p>
+                <textarea value={editComboTpl} onChange={e => setEditComboTpl(e.target.value)} rows={5}
+                  className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] focus:border-primary focus:outline-none" />
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {["{username}", "{email}", "{tiktokPassword}", "{emailPassword}", "{price}", "{followers}", "{country}", "{niche}", "{publico}", "{link}", "{categories}"].map(v => (
+                    <button key={v} onClick={() => setEditComboTpl(prev => prev + v)} className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{v}</button>
+                  ))}
+                </div>
+                <button onClick={() => { setComboTemplate(editComboTpl); setShowComboTemplate(false); notify("Formato combo guardado") }}
+                  className="w-full rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground">Guardar formato</button>
+              </div>
+            )}
 
             {/* Buyer */}
             <input
