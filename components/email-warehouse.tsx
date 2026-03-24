@@ -1,20 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Upload, Plus, X, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Upload, Plus, X, Eye, EyeOff, Key, Loader2, Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore, today } from "@/lib/store"
 
 const filters = ["Todos", "Disponibles", "Usados"] as const
 
 export function EmailWarehouse() {
-  const { emailWarehouse, setEmailWarehouse, setActiveTab } = useStore()
+  const { emailWarehouse, setEmailWarehouse, setActiveTab, notify } = useStore()
   const [filter, setFilter] = useState<string>("Todos")
   const [showBulk, setShowBulk] = useState(false)
   const [bulkText, setBulkText] = useState("")
   const [newEmail, setNewEmail] = useState("")
   const [newPass, setNewPass] = useState("")
   const [showPasswords, setShowPasswords] = useState(false)
+  const [fetchingCode, setFetchingCode] = useState<string | null>(null)
+  const [codes, setCodes] = useState<Record<string, { code: string; from: string; date: string } | null>>({})
+  const [copiedCode, setCopiedCode] = useState("")
 
   const availCount = emailWarehouse.filter(e => !e.used).length
   const usedCount = emailWarehouse.filter(e => e.used).length
@@ -49,12 +52,43 @@ export function EmailWarehouse() {
     if (newEmails.length > 0) {
       setEmailWarehouse([...emailWarehouse, ...newEmails])
       setBulkText(""); setShowBulk(false)
-      alert(`${newEmails.length} correos importados`)
-    } else alert("No se encontraron correos nuevos")
+      notify(`${newEmails.length} correos importados`)
+    } else notify("No se encontraron correos nuevos", "error")
   }
 
   const remove = (email: string) => setEmailWarehouse(emailWarehouse.filter(e => e.email !== email))
   const toggle = (email: string) => setEmailWarehouse(emailWarehouse.map(e => e.email === email ? { ...e, used: !e.used, usedBy: e.used ? "" : e.usedBy } : e))
+
+  const fetchCode = async (email: string, password: string) => {
+    if (!password) { notify("Este correo no tiene contraseña guardada", "error"); return }
+    setFetchingCode(email)
+    setCodes(prev => ({ ...prev, [email]: null }))
+    try {
+      const res = await fetch("/api/email-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const json = await res.json()
+      if (json.code) {
+        setCodes(prev => ({ ...prev, [email]: { code: json.code, from: json.from || "", date: json.date || "" } }))
+        try { await navigator.clipboard.writeText(json.code) } catch {}
+        notify(`Código: ${json.code} (copiado)`)
+      } else {
+        notify(json.error || "No se encontró código", "error")
+      }
+    } catch (e: any) {
+      notify(`Error: ${e.message}`, "error")
+    }
+    setFetchingCode(null)
+  }
+
+  const copyCode = async (code: string, email: string) => {
+    try { await navigator.clipboard.writeText(code) } catch {}
+    setCopiedCode(email)
+    setTimeout(() => setCopiedCode(""), 2000)
+    notify("Código copiado")
+  }
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-28 pt-4">
@@ -92,7 +126,7 @@ export function EmailWarehouse() {
       ) : (
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
           <input type="email" placeholder="correo@ejemplo.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
-          <input placeholder="Contraseña (opcional)" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+          <input placeholder="Contraseña" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
           <button onClick={addSingle} disabled={!newEmail} className="flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-3 text-sm font-medium text-muted-foreground disabled:opacity-50">
             <Plus className="h-4 w-4" /> Agregar correo
           </button>
@@ -110,39 +144,73 @@ export function EmailWarehouse() {
 
       {/* List */}
       <div className="flex flex-col gap-2">
-        {filtered.map((e, i) => (
-          <div key={i} className={cn("rounded-xl border bg-card p-4", e.used ? "border-border opacity-60" : "border-border")}>
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{e.email}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {showPasswords ? (e.password || "Sin contraseña") : (e.password ? "••••••••" : "Sin contraseña")}
-                  </p>
-                  {e.password && (
-                    <button
-                      onClick={async () => { try { await navigator.clipboard.writeText(e.password) } catch {} }}
-                      className="text-[10px] text-accent"
-                    >
-                      Copiar
-                    </button>
+        {filtered.map((e, i) => {
+          const isLoading = fetchingCode === e.email
+          const codeData = codes[e.email]
+          const isCopied = copiedCode === e.email
+
+          return (
+            <div key={i} className={cn("rounded-xl border bg-card p-4", e.used ? "border-border opacity-60" : "border-border")}>
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{e.email}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {showPasswords ? (e.password || "Sin contraseña") : (e.password ? "••••••••" : "Sin contraseña")}
+                    </p>
+                    {e.password && (
+                      <button onClick={async () => { try { await navigator.clipboard.writeText(e.password); notify("Contraseña copiada") } catch {} }}
+                        className="text-[10px] text-accent">Copiar</button>
+                    )}
+                  </div>
+                  {e.used && e.usedBy && (
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Usada por @{e.usedBy}</p>
                   )}
                 </div>
-                {e.used && e.usedBy && (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">Usada por @{e.usedBy}</p>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {/* Fetch Code Button */}
+                  {e.password && (
+                    <button
+                      onClick={() => fetchCode(e.email, e.password)}
+                      disabled={isLoading}
+                      className={cn("flex h-8 items-center gap-1 rounded-lg px-2.5 text-[10px] font-semibold transition-all",
+                        codeData ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"
+                      )}
+                    >
+                      {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Key className="h-3 w-3" />}
+                      {isLoading ? "" : "Código"}
+                    </button>
+                  )}
+                  <button onClick={() => toggle(e.email)} className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium", e.used ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                    {e.used ? "Usada" : "Disp."}
+                  </button>
+                  <button onClick={() => remove(e.email)} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => toggle(e.email)} className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium", e.used ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                  {e.used ? "Usada" : "Disponible"}
-                </button>
-                <button onClick={() => remove(e.email)} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+
+              {/* Code Display */}
+              {codeData && (
+                <div className="mt-3 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+                  <div className="flex-1">
+                    <p className="font-mono text-xl font-bold text-primary tracking-widest">{codeData.code}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {codeData.from && `De: ${codeData.from}`}
+                      {codeData.date && ` · ${new Date(codeData.date).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => copyCode(codeData.code, e.email)}
+                    className={cn("flex h-9 w-9 items-center justify-center rounded-lg transition-all", isCopied ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")}
+                  >
+                    {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {filtered.length === 0 && (
@@ -150,6 +218,15 @@ export function EmailWarehouse() {
           {filter === "Todos" ? "Agrega correos arriba" : "No hay correos en esta categoría"}
         </div>
       )}
+
+      {/* Info */}
+      <div className="rounded-xl bg-secondary/50 p-3">
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <strong>Obtener códigos TikTok:</strong> Toca "Código" en cualquier correo para buscar el último código de verificación de TikTok. Se conecta por IMAP y busca en los últimos emails. El código se copia automáticamente.
+          {"\n\n"}
+          <strong>Nota:</strong> Hotmail/Outlook puede requerir una "Contraseña de aplicación" en vez de tu contraseña normal. Gmail necesita "Acceso de apps menos seguras" o una contraseña de aplicación.
+        </p>
+      </div>
     </div>
   )
 }
