@@ -148,25 +148,37 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const fields = "id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at"
 
-      // Available + disqualified: WITH screenshots
-      const { data: withImg } = await supabase
-        .from("accounts")
-        .select(fields + ", screenshot")
-        .in("status", ["available", "disqualified"])
-        .order("created_at", { ascending: false })
-
-      // Sold: WITHOUT screenshots (lighter)
-      const { data: noImg } = await supabase
+      // Load ALL accounts WITHOUT screenshots first (fast, lightweight)
+      const { data: allData } = await supabase
         .from("accounts")
         .select(fields)
-        .eq("status", "sold")
         .order("created_at", { ascending: false })
 
-      const all = [
-        ...((withImg || []).map(fromDbAccount)),
-        ...((noImg || []).map(fromDbAccount)),
-      ]
+      const all = (allData || []).map(fromDbAccount)
       set({ accounts: all, loading: false })
+
+      // Then load screenshots for available + disqualified in small batches
+      const needScreenshots = all.filter(a => a.status === "available" || a.status === "disqualified")
+      const BATCH_SIZE = 5
+
+      for (let i = 0; i < needScreenshots.length; i += BATCH_SIZE) {
+        const batch = needScreenshots.slice(i, i + BATCH_SIZE)
+        const ids = batch.map(a => a.id)
+
+        const { data: imgData } = await supabase
+          .from("accounts")
+          .select("id, screenshot")
+          .in("id", ids)
+
+        if (imgData && imgData.length > 0) {
+          set((s) => ({
+            accounts: s.accounts.map(a => {
+              const img = imgData.find((d: any) => d.id === a.id)
+              return img?.screenshot ? { ...a, screenshot: img.screenshot } : a
+            })
+          }))
+        }
+      }
     } catch (e) {
       console.error("Failed to load accounts:", e)
       set({ loading: false })
