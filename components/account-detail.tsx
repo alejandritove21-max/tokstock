@@ -70,7 +70,15 @@ export function AccountDetail() {
   }
 
   const handleRestore = async () => {
-    await updateAccount(a.id, { ...a, status: "available", soldDate: null, disqualifiedDate: null, realSalePrice: 0, profit: 0, buyer: "" })
+    // Load screenshot from DB since sold accounts don't have it loaded
+    let screenshot = a.screenshot || ""
+    if (!screenshot) {
+      try {
+        screenshot = await db.getAccountScreenshot(a.id) || ""
+      } catch {}
+    }
+    await updateAccount(a.id, { ...a, screenshot, status: "available", soldDate: null, disqualifiedDate: null, realSalePrice: 0, profit: 0, buyer: "" })
+    setLoadedScreenshot(screenshot)
     notify("Cuenta restaurada")
     setConfirmAction(null)
   }
