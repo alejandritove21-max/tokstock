@@ -101,10 +101,24 @@ export function Inventory() {
     if (!batchBuyer.trim()) { notify("Ingresa el comprador", "error"); return }
     if (currentTotal <= 0) { notify("Ingresa los precios", "error"); return }
 
-    const todayStr = today()
+    // STEP 1: Build credentials message BEFORE any async operations
     let credsList = ""
     let count = 0
+    for (const acc of selectedAccounts) {
+      const price = Number(batchPrices[String(acc.id)] || 0)
+      credsList += `👤 @${acc.username}\n📧 Email: ${acc.email}\n🔑 Pass TikTok: ${acc.tiktokPassword}\n🔑 Pass Email: ${acc.emailPasswordSame ? acc.tiktokPassword : acc.emailPassword}\n💵 Precio: ${formatCurrency(price)}\n\n`
+      count++
+    }
+    credsList += `━━━━━━━━━━━━━━━━━━\n📊 RESUMEN COMBO\n🔢 Cuentas: ${count}\n💰 Total: ${formatCurrency(currentTotal)}\n📈 Ganancia: ${formatCurrency(totalProfit)}\n👤 Comprador: ${batchBuyer.trim()}\n━━━━━━━━━━━━━━━━━━`
 
+    // STEP 2: Open WhatsApp IMMEDIATELY (synchronous, from user click — iOS blocks async window.open)
+    window.open(`https://wa.me/?text=${encodeURIComponent(credsList)}`, "_blank")
+
+    // STEP 3: Copy to clipboard
+    try { await navigator.clipboard.writeText(credsList) } catch {}
+
+    // STEP 4: Now do the async database updates
+    const todayStr = today()
     for (const acc of selectedAccounts) {
       const price = Number(batchPrices[String(acc.id)] || 0)
       const profit = price - acc.purchasePrice
@@ -116,20 +130,9 @@ export function Inventory() {
         soldDate: todayStr,
         buyer: batchBuyer.trim(),
       })
-      credsList += `👤 @${acc.username}\n📧 Email: ${acc.email}\n🔑 Pass TikTok: ${acc.tiktokPassword}\n🔑 Pass Email: ${acc.emailPasswordSame ? acc.tiktokPassword : acc.emailPassword}\n💵 Precio: ${formatCurrency(price)}\n\n`
-      count++
     }
 
-    // Add summary at the end
-    credsList += `━━━━━━━━━━━━━━━━━━\n📊 RESUMEN COMBO\n🔢 Cuentas: ${count}\n💰 Total: ${formatCurrency(currentTotal)}\n📈 Ganancia: ${formatCurrency(totalProfit)}\n👤 Comprador: ${batchBuyer.trim()}\n━━━━━━━━━━━━━━━━━━`
-
-    try { await navigator.clipboard.writeText(credsList) } catch {}
     notify(`${count} cuentas vendidas por ${formatCurrency(currentTotal)} · Datos copiados`)
-
-    // Open WhatsApp with credentials
-    const waMsg = credsList
-    window.open(`https://wa.me/?text=${encodeURIComponent(waMsg)}`, "_blank")
-
     setBatchSell(false)
     setSelected([])
     setSelectionMode(false)

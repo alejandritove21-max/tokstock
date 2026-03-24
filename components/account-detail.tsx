@@ -38,8 +38,7 @@ export function AccountDetail() {
     if (!price || !sellBuyer.trim()) { notify("Ingresa precio y comprador", "error"); return }
     const profit = price - a.purchasePrice
 
-    // Prepare WhatsApp message and credentials BEFORE updating (to avoid unmount issues)
-    const creds = `👤 @${a.username}\n📧 Email: ${a.email}\n🔑 Pass TikTok: ${a.tiktokPassword}\n🔑 Pass Email: ${a.emailPasswordSame ? a.tiktokPassword : a.emailPassword}\n💵 Precio: ${formatCurrency(price)}`
+    // Prepare WhatsApp message
     const msg = whatsappTemplate
       .replace("{username}", a.username || "")
       .replace("{followers}", formatFollowers(a.followers))
@@ -50,19 +49,18 @@ export function AccountDetail() {
       .replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
       .replace("{publico}", a.publicType || "—")
 
-    // Copy credentials to clipboard
+    // IMPORTANT: Open WhatsApp FIRST (synchronous, from user click — iOS blocks async window.open)
+    const waWindow = window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
+
+    // Copy credentials
+    const creds = `👤 @${a.username}\n📧 Email: ${a.email}\n🔑 Pass TikTok: ${a.tiktokPassword}\n🔑 Pass Email: ${a.emailPasswordSame ? a.tiktokPassword : a.emailPassword}\n💵 Precio: ${formatCurrency(price)}`
     try { await navigator.clipboard.writeText(creds) } catch {}
 
-    // Update account
+    // Then update account (async is fine now, WhatsApp already opened)
     await updateAccount(a.id, { ...a, status: "sold", realSalePrice: price, profit, soldDate: today(), buyer: sellBuyer.trim() })
 
     notify(`Vendida por ${formatCurrency(price)} · Datos copiados`)
     setConfirmAction(null)
-
-    // Open WhatsApp after a small delay to ensure state is settled
-    setTimeout(() => {
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
-    }, 300)
   }
 
   const handleDisqualify = async () => {
