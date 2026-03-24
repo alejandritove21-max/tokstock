@@ -10,29 +10,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Falta imagen o API key" }, { status: 400 })
     }
 
-    const prompt = `Esta es una captura de pantalla de un perfil de TikTok.
+    const prompt = `Eres un OCR experto. Analiza esta captura de pantalla de un perfil de TikTok y extrae los datos con PRECISIÓN ABSOLUTA.
 
-EXTRAE estos datos EXACTOS de la imagen:
+REGLAS CRÍTICAS:
+- MIRA LA IMAGEN CON CUIDADO antes de responder
+- El USERNAME está en texto gris, DEBAJO del nombre grande en blanco
+- Empieza con @ y puede contener: letras, números, puntos (.), guiones bajos (_), guiones (-)
+- TRANSCRIBE CARÁCTER POR CARÁCTER sin asumir, corregir ni cambiar NADA
+- Diferencia entre: 0 (cero) y O (letra), l (ele) e I (i mayúscula), 1 (uno) y l (ele)
+- Si el username tiene caracteres árabes, coreanos u otros idiomas, cópialos tal cual
 
-1. USERNAME: El texto que empieza con @ (está en gris, debajo del nombre grande)
-   - COPIA CADA CARÁCTER EXACTO: letras, números, puntos (.), guiones bajos (_), guiones (-)
-   - Ejemplo: si ves "@dr.friedrich_wolf99" el username es "dr.friedrich_wolf99"
-   - Ejemplo: si ves "@love.fashion_46" el username es "love.fashion_46"  
-   - Ejemplo: si ves "@crontyrte0n" el username es "crontyrte0n"
-   - NO cambies, NO corrijas, NO omitas ningún carácter especial
-   - Los puntos (.) y guiones bajos (_) son MUY comunes en usernames de TikTok
+DATOS A EXTRAER:
 
-2. NOMBRE: El texto grande en blanco arriba del @username
+1. USERNAME (sin el @):
+   - Lee cada carácter del texto gris bajo el nombre
+   - Ejemplos reales: "dr.friedrich_wolf99", "amor.y_paz-3", "مريم_احمد", "cook_master.01"
 
-3. SEGUIDORES: El número al lado de "Seguidores"
-   - "12.6 mil" = 12600
-   - "1.2M" = 1200000
-   - "856" = 856
+2. NOMBRE DE PERFIL: El texto grande en blanco/bold arriba del @username
 
-4. NICHO: Tipo de contenido (1-2 palabras en español)
+3. SEGUIDORES: El número que aparece sobre la palabra "Seguidores" o "Followers"
+   - Convierte: "12.6 mil" → 12600, "1.2M" → 1200000, "856" → 856
+   - "12,6 mil" → 12600, "5.4K" → 5400
+   - Si dice "mil" o "K" multiplica por 1000
+   - Si dice "M" multiplica por 1000000
 
-Responde SOLO con JSON válido (sin backticks ni texto extra):
-{"username":"COPIA_EXACTA_DEL_HANDLE","profileName":"NOMBRE","followers":NUMERO,"niche":"NICHO"}`
+4. NICHO: Describe el tipo de contenido en 1-3 palabras en español (Entretenimiento, Cocina, Moda, Comedia, etc.)
+
+RESPONDE ÚNICAMENTE con este JSON (sin backticks, sin texto antes o después):
+{"username":"USERNAME_EXACTO","profileName":"NOMBRE","followers":NUMERO,"niche":"NICHO"}`
 
     let data: any = {}
 

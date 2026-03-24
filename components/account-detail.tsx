@@ -10,13 +10,17 @@ export function AccountDetail() {
   const { selectedAccount: a, setSelectedAccount, setEditingAccount, updateAccount, deleteAccount, setActiveTab, notify, whatsappTemplate, countries } = useStore()
   const [showCreds, setShowCreds] = useState(false)
   const [imgRevealed, setImgRevealed] = useState(false)
-  const [loadedScreenshot, setLoadedScreenshot] = useState(a.screenshot || "")
+  const [loadedScreenshot, setLoadedScreenshot] = useState(a?.screenshot || "")
   const [loadingImg, setLoadingImg] = useState(false)
   const [copied, setCopied] = useState("")
   const [confirmAction, setConfirmAction] = useState<string | null>(null)
   const [sellPrice, setSellPrice] = useState("")
   const [sellBuyer, setSellBuyer] = useState("")
   const [showImageModal, setShowImageModal] = useState(false)
+  // Editable fields for sold accounts
+  const [editingSoldInfo, setEditingSoldInfo] = useState(false)
+  const [editPrice, setEditPrice] = useState("")
+  const [editBuyer, setEditBuyer] = useState("")
 
   if (!a) return null
 
@@ -33,11 +37,9 @@ export function AccountDetail() {
     const price = Number(sellPrice)
     if (!price || !sellBuyer.trim()) { notify("Ingresa precio y comprador", "error"); return }
     const profit = price - a.purchasePrice
-    await updateAccount(a.id, { ...a, status: "sold", realSalePrice: price, profit, soldDate: today(), buyer: sellBuyer.trim() })
-    const creds = `Email: ${a.email}\nContraseña TikTok: ${a.tiktokPassword}\nContraseña Email: ${a.emailPasswordSame ? a.tiktokPassword : a.emailPassword}`
-    try { await navigator.clipboard.writeText(creds) } catch {}
-    notify(`Vendida por ${formatCurrency(price)} · Ganancia: ${formatCurrency(profit)}`)
-    setConfirmAction(null)
+
+    // Prepare WhatsApp message and credentials BEFORE updating (to avoid unmount issues)
+    const creds = `👤 @${a.username}\n📧 Email: ${a.email}\n🔑 Pass TikTok: ${a.tiktokPassword}\n🔑 Pass Email: ${a.emailPasswordSame ? a.tiktokPassword : a.emailPassword}\n💵 Precio: ${formatCurrency(price)}`
     const msg = whatsappTemplate
       .replace("{username}", a.username || "")
       .replace("{followers}", formatFollowers(a.followers))
@@ -47,7 +49,20 @@ export function AccountDetail() {
       .replace("{tiktokPassword}", a.tiktokPassword || "")
       .replace("{emailPassword}", a.emailPasswordSame ? a.tiktokPassword || "" : a.emailPassword || "")
       .replace("{publico}", a.publicType || "—")
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
+
+    // Copy credentials to clipboard
+    try { await navigator.clipboard.writeText(creds) } catch {}
+
+    // Update account
+    await updateAccount(a.id, { ...a, status: "sold", realSalePrice: price, profit, soldDate: today(), buyer: sellBuyer.trim() })
+
+    notify(`Vendida por ${formatCurrency(price)} · Datos copiados`)
+    setConfirmAction(null)
+
+    // Open WhatsApp after a small delay to ensure state is settled
+    setTimeout(() => {
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
+    }, 300)
   }
 
   const handleDisqualify = async () => {
@@ -66,6 +81,21 @@ export function AccountDetail() {
     await deleteAccount(a.id)
     notify("Cuenta eliminada")
     setSelectedAccount(null)
+  }
+
+  const handleSaveSoldInfo = async () => {
+    const newPrice = Number(editPrice)
+    if (!newPrice) { notify("Ingresa un precio válido", "error"); return }
+    const profit = newPrice - a.purchasePrice
+    await updateAccount(a.id, { ...a, realSalePrice: newPrice, profit, buyer: editBuyer.trim() || a.buyer })
+    notify("Datos actualizados")
+    setEditingSoldInfo(false)
+  }
+
+  const openEditSoldInfo = () => {
+    setEditPrice(a.realSalePrice?.toString() || "")
+    setEditBuyer(a.buyer || "")
+    setEditingSoldInfo(true)
   }
 
   const flag = countries.find(c => c.name === a.country)?.emoji || ""
@@ -125,7 +155,6 @@ export function AccountDetail() {
                 try {
                   const screenshot = await db.getAccountScreenshot(a.id)
                   if (screenshot) setLoadedScreenshot(screenshot)
-                  else setLoadedScreenshot("")
                 } catch {}
                 setLoadingImg(false)
               }}
@@ -161,26 +190,9 @@ export function AccountDetail() {
             <div className="flex items-center gap-2">
               {label === "Link" ? (
                 <>
-                  <a
-                    href={val as string}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="max-w-[150px] truncate text-right text-xs font-medium text-primary underline"
-                  >
-                    {val}
-                  </a>
-                  <button
-                    onClick={() => {
-                      window.open(val as string, "_blank")
-                    }}
-                    className="rounded-lg bg-primary/10 p-1.5 text-primary"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => copy(val as string, "Link")}
-                    className={cn("rounded-lg p-1.5", copied === "Link" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}
-                  >
+                  <a href={val as string} target="_blank" rel="noopener noreferrer" className="max-w-[150px] truncate text-right text-xs font-medium text-primary underline">{val}</a>
+                  <button onClick={() => { window.open(val as string, "_blank") }} className="rounded-lg bg-primary/10 p-1.5 text-primary"><ExternalLink className="h-3 w-3" /></button>
+                  <button onClick={() => copy(val as string, "Link")} className={cn("rounded-lg p-1.5", copied === "Link" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}>
                     {copied === "Link" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </button>
                 </>
@@ -194,21 +206,56 @@ export function AccountDetail() {
 
       {/* Financial Data */}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Datos Financieros</h3>
-        {[
-          ["Precio Compra", formatCurrency(a.purchasePrice)],
-          ["Precio Venta Est.", formatCurrency(a.estimatedSalePrice)],
-          a.status === "sold" ? ["Precio Real", formatCurrency(a.realSalePrice)] : null,
-          a.status === "sold" ? ["Ganancia", formatCurrency(a.profit)] : null,
-          a.buyer ? ["Comprador", a.buyer] : null,
-        ].filter(Boolean).map(([label, val]: any) => (
-          <div key={label} className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
-            <span className="text-xs text-muted-foreground">{label}</span>
-            <span className={cn("text-xs font-semibold", label === "Ganancia" && Number(a.profit) >= 0 ? "text-primary" : label === "Ganancia" ? "text-destructive" : "")}>
-              {val}
-            </span>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Datos Financieros</h3>
+          {a.status === "sold" && !editingSoldInfo && (
+            <button onClick={openEditSoldInfo} className="flex items-center gap-1 rounded-lg bg-secondary px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+              <Edit className="h-3 w-3" /> Editar
+            </button>
+          )}
+        </div>
+
+        {editingSoldInfo ? (
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-[10px] text-muted-foreground">Precio de venta ($)</label>
+              <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)}
+                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm focus:border-primary focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] text-muted-foreground">Comprador</label>
+              <input value={editBuyer} onChange={e => setEditBuyer(e.target.value)}
+                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm focus:border-primary focus:outline-none" />
+            </div>
+            {editPrice && (
+              <div className="rounded-lg bg-secondary p-2 text-center">
+                <span className="text-xs text-muted-foreground">Ganancia: </span>
+                <span className={cn("text-xs font-bold", Number(editPrice) - a.purchasePrice >= 0 ? "text-primary" : "text-destructive")}>
+                  {formatCurrency(Number(editPrice) - a.purchasePrice)}
+                </span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setEditingSoldInfo(false)} className="flex-1 rounded-xl bg-secondary py-2.5 text-sm font-medium text-muted-foreground">Cancelar</button>
+              <button onClick={handleSaveSoldInfo} className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-medium text-primary-foreground">Guardar</button>
+            </div>
           </div>
-        ))}
+        ) : (
+          <>
+            {[
+              ["Precio Compra", formatCurrency(a.purchasePrice)],
+              ["Precio Venta Est.", formatCurrency(a.estimatedSalePrice)],
+              a.status === "sold" ? ["Precio Real", formatCurrency(a.realSalePrice)] : null,
+              a.status === "sold" ? ["Ganancia", formatCurrency(a.profit)] : null,
+              a.buyer ? ["Comprador", a.buyer] : null,
+            ].filter(Boolean).map(([label, val]: any) => (
+              <div key={label} className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
+                <span className="text-xs text-muted-foreground">{label}</span>
+                <span className={cn("text-xs font-semibold", label === "Ganancia" && Number(a.profit) >= 0 ? "text-primary" : label === "Ganancia" ? "text-destructive" : "")}>{val}</span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Credentials */}
@@ -219,10 +266,7 @@ export function AccountDetail() {
               <img src="/gmail.png" alt="" className="h-4 w-4" />
               <span className="text-[10px] font-semibold uppercase tracking-widest text-warning">Credenciales</span>
             </div>
-            <button
-              onClick={() => setShowCreds(!showCreds)}
-              className="flex items-center gap-1 rounded-lg bg-warning/10 px-3 py-1.5 text-[10px] font-semibold text-warning"
-            >
+            <button onClick={() => setShowCreds(!showCreds)} className="flex items-center gap-1 rounded-lg bg-warning/10 px-3 py-1.5 text-[10px] font-semibold text-warning">
               {showCreds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               {showCreds ? "Ocultar" : "Mostrar"}
             </button>
@@ -244,6 +288,17 @@ export function AccountDetail() {
                   </button>
                 </div>
               ))}
+              {/* Copy all credentials button */}
+              <button
+                onClick={() => {
+                  const all = `👤 @${a.username}\n📧 Email: ${a.email}\n🔑 Pass TikTok: ${a.tiktokPassword}\n🔑 Pass Email: ${a.emailPasswordSame ? a.tiktokPassword : a.emailPassword}`
+                  copy(all, "Todo")
+                }}
+                className={cn("mt-1 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-medium", copied === "Todo" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}
+              >
+                {copied === "Todo" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied === "Todo" ? "Copiado" : "Copiar todo"}
+              </button>
             </div>
           )}
         </div>
@@ -300,22 +355,11 @@ export function AccountDetail() {
 
       {/* Image Fullscreen Modal */}
       {showImageModal && loadedScreenshot && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
-          onClick={() => setShowImageModal(false)}
-        >
-          <button
-            onClick={() => setShowImageModal(false)}
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
-          >
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setShowImageModal(false)}>
+          <button onClick={() => setShowImageModal(false)} className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white">
             <X className="h-5 w-5" />
           </button>
-          <img
-            src={loadedScreenshot}
-            alt=""
-            className="max-h-[85vh] max-w-full rounded-lg object-contain"
-            onClick={e => e.stopPropagation()}
-          />
+          <img src={loadedScreenshot} alt="" className="max-h-[85vh] max-w-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
 

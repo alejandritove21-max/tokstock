@@ -112,18 +112,18 @@ export function AccountForm() {
     if (!imageToAnalyze) { setAiError("Sube una imagen primero."); return }
     setAnalyzing(true); setAiError(""); setAiResult(null)
     try {
-      // Compress for AI but keep readable (800px max height for profile screenshots)
+      // Compress for AI but keep readable for accurate OCR
       const compressForAI = (dataUrl: string): Promise<string> => new Promise(resolve => {
         const img = new Image()
         img.onload = () => {
           const canvas = document.createElement("canvas")
-          const MAX = 800
+          const MAX = 1000
           let w = img.width, h = img.height
           if (h > MAX) { w = Math.round(w * MAX / h); h = MAX }
           if (w > MAX) { h = Math.round(h * MAX / w); w = MAX }
           canvas.width = w; canvas.height = h
           canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
-          resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1])
+          resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1])
         }
         img.src = dataUrl
       })
