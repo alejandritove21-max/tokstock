@@ -196,6 +196,16 @@ export const useStore = create<AppState>((set, get) => ({
   updateAccount: async (id, acc) => {
     const updated = await db.updateAccount(id, acc)
     const prevAccount = get().accounts.find(a => a.id === id)
+    
+    // If restoring to available and no screenshot in memory, load it from DB
+    let screenshot = updated.screenshot || acc.screenshot || prevAccount?.screenshot || ""
+    if (!screenshot && updated.status === "available") {
+      try {
+        screenshot = await db.getAccountScreenshot(id) || ""
+      } catch {}
+    }
+    if (screenshot) updated.screenshot = screenshot
+
     set((s) => ({
       accounts: s.accounts.map((a) => (a.id === id ? { ...a, ...updated } : a)),
       selectedAccount: s.selectedAccount?.id === id ? { ...s.selectedAccount, ...updated } : s.selectedAccount,
@@ -204,9 +214,9 @@ export const useStore = create<AppState>((set, get) => ({
     if (prevAccount?.status === "available" && (updated.status === "sold" || updated.status === "disqualified")) {
       get().deleteFromChannel(id)
     }
-    // Auto-send if restored to available
+    // Auto-send if restored to available (with screenshot)
     if (prevAccount?.status !== "available" && updated.status === "available") {
-      get().sendToChannel(updated)
+      get().sendToChannel({ ...updated, screenshot })
     }
     return updated
   },
