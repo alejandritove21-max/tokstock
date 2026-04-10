@@ -16,6 +16,7 @@ export interface Account {
   niche: string
   publicType: string
   screenshot: string
+  statsImages: string[]
   notes: string
   purchasePrice: number
   estimatedSalePrice: number
@@ -157,6 +158,29 @@ export const useStore = create<AppState>((set, get) => ({
       const all = (allData || []).map(fromDbAccount)
       set({ accounts: all, loading: false })
 
+      // Sync email warehouse: mark used emails based on actual accounts
+      const { emailWarehouse } = get()
+      if (emailWarehouse.length > 0) {
+        const usedEmails = new Set(all.map(a => a.email?.toLowerCase()).filter(Boolean))
+        let changed = false
+        const synced = emailWarehouse.map(e => {
+          const emailLower = e.email.toLowerCase()
+          const account = all.find(a => a.email?.toLowerCase() === emailLower)
+          if (account && !e.used) {
+            changed = true
+            return { ...e, used: true, usedBy: account.username }
+          } else if (!account && e.used) {
+            changed = true
+            return { ...e, used: false, usedBy: "" }
+          }
+          return e
+        })
+        if (changed) {
+          set({ emailWarehouse: synced })
+          db.setSetting("emailWarehouse", synced)
+        }
+      }
+
       // Then load screenshots for available + disqualified in small batches
       const needScreenshots = all.filter(a => a.status === "available" || a.status === "disqualified")
       const BATCH_SIZE = 5
@@ -221,9 +245,19 @@ export const useStore = create<AppState>((set, get) => ({
     return updated
   },
   deleteAccount: async (id) => {
+    const { accounts, emailWarehouse } = get()
+    const acc = accounts.find(a => a.id === id)
     // Auto-delete from channel before removing
     get().deleteFromChannel(id)
     await db.deleteAccount(id)
+    // Delete stats images
+    try { await db.deleteAccountStats(id) } catch {}
+    // Free email in warehouse
+    if (acc?.email) {
+      const updated = emailWarehouse.map(e => e.email.toLowerCase() === acc.email.toLowerCase() ? { ...e, used: false, usedBy: "" } : e)
+      set({ emailWarehouse: updated })
+      db.setSetting("emailWarehouse", updated)
+    }
     set((s) => ({
       accounts: s.accounts.filter((a) => a.id !== id),
       selectedAccount: s.selectedAccount?.id === id ? null : s.selectedAccount,

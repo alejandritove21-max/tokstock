@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Send, Bot, User, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useStore, formatCurrency, formatFollowers, today } from "@/lib/store"
+import { useStore, formatCurrency, formatFollowers, today, venezuelaDaysAgo, isOnOrAfter } from "@/lib/store"
 
 interface Message {
   role: "user" | "assistant"
@@ -60,47 +60,85 @@ export function ChatBot() {
       `Meta: ${g.title || g.type} | Objetivo: ${g.target} | Progreso: ${g.current}/${g.target} | Fecha límite: ${g.deadline || "—"}`
     ).join("\n")
 
-    return `Eres el asistente de TokStock, una app de inventario de cuentas TikTok monetizadas. Responde en español, sé conciso y útil. Hoy es ${today()}.
+    // Calculate 30-day metrics
+    const startKey30 = venezuelaDaysAgo(30)
+    const sold30 = sold.filter(a => isOnOrAfter(a.soldDate, startKey30))
+    const profit30 = sold30.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
+    const loss30 = disq.filter(a => isOnOrAfter(a.disqualifiedDate, startKey30)).reduce((s, a) => s + (a.purchasePrice || 0), 0)
+    const avgDays = (() => {
+      const withDates = sold.filter(a => a.soldDate && a.createdAt)
+      if (!withDates.length) return 0
+      return Math.round(withDates.reduce((s, a) => s + Math.max(0, (new Date(a.soldDate! + "T12:00:00").getTime() - new Date(a.createdAt).getTime()) / 86400000), 0) / withDates.length)
+    })()
 
-RESUMEN DEL INVENTARIO:
-- Cuentas disponibles: ${available.length}
-- Cuentas vendidas: ${sold.length}
-- Cuentas descalificadas: ${disq.length}
-- Total cuentas: ${accounts.length}
-- Total invertido (todas): ${formatCurrency(totalInvested)}
-- Inversión en disponibles: ${formatCurrency(totalInvestedAvailable)}
-- Valor estimado disponibles: ${formatCurrency(totalEstimatedValue)}
-- Ganancia potencial disponibles: ${formatCurrency(totalEstimatedValue - totalInvestedAvailable)}
-- Ingresos por ventas: ${formatCurrency(totalRevenue)}
-- Ganancia total ventas: ${formatCurrency(totalProfit)}
-- Margen promedio: ${sold.length > 0 ? Math.round(totalProfit / sold.length) : 0}$/cuenta
-- Correos en bodega: ${emailWarehouse.length} total (${emailsAvail} disponibles, ${emailsUsed} usados)
-- Categorías: ${categories.join(", ")}
-- Países: ${countries.map(c => `${c.emoji} ${c.name}`).join(", ")}
-- Metas activas: ${goals.length}
+    // Top buyers
+    const buyers: Record<string, { count: number; total: number }> = {}
+    sold.forEach(a => { if (a.buyer) { if (!buyers[a.buyer]) buyers[a.buyer] = { count: 0, total: 0 }; buyers[a.buyer].count++; buyers[a.buyer].total += a.realSalePrice || 0 } })
+    const topBuyers = Object.entries(buyers).sort((a, b) => b[1].count - a[1].count).slice(0, 5)
+
+    // Country breakdown
+    const countryCounts: Record<string, number> = {}
+    available.forEach(a => { if (a.country) countryCounts[a.country] = (countryCounts[a.country] || 0) + 1 })
+
+    return `Eres TokBot, el asistente experto de TokStock — una app para gestionar inventario de cuentas TikTok monetizadas. Tu dueño compra cuentas TikTok que ya están monetizadas (cumplen los requisitos del Fondo de Creadores) y las revende a creadores de contenido. Responde SIEMPRE en español. Sé conciso, útil y estratégico. Hoy es ${today()}.
+
+═══ CONOCIMIENTO DEL NEGOCIO ═══
+
+CÓMO FUNCIONA:
+- Se compran cuentas TikTok monetizadas (con acceso al Fondo de Creadores o Creativity Program)
+- Cada cuenta tiene: email, contraseña TikTok, contraseña del email, seguidores, país, nicho
+- Se revenden a compradores (creadores de contenido) a un precio mayor
+- La ganancia es: precio de venta - precio de compra
+- Una cuenta se "descalifica" cuando pierde la monetización o tiene problemas (eso es una pérdida)
+- El "público" de una cuenta puede ser: Latino, Árabe o Mixto
+- Los nichos comunes son: entretenimiento, comedia, cocina, moda, gaming, etc.
+
+MÉTRICAS CLAVE:
+- ROI = (ganancia / costo) × 100
+- Un buen margen es 50-200% de ganancia sobre el costo
+- Tiempo promedio de venta: lo ideal es vender rápido (menos de 7 días)
+- Tasa de descalificación: si es alta (>30%), hay que mejorar la selección de cuentas
+
+═══ DATOS EN TIEMPO REAL ═══
+
+INVENTARIO:
+- Disponibles: ${available.length} cuentas (inversión: ${formatCurrency(totalInvestedAvailable)}, valor estimado: ${formatCurrency(totalEstimatedValue)})
+- Vendidas: ${sold.length} cuentas (ingresos: ${formatCurrency(totalRevenue)}, ganancia: ${formatCurrency(totalProfit)})
+- Descalificadas: ${disq.length} cuentas (pérdida: ${formatCurrency(disq.reduce((s, a) => s + (a.purchasePrice || 0), 0))})
+- Total: ${accounts.length} cuentas
+
+ÚLTIMOS 30 DÍAS:
+- Vendidas: ${sold30.length} | Ganancia: ${formatCurrency(profit30)} | Pérdidas: ${formatCurrency(loss30)} | Neto: ${formatCurrency(profit30 - loss30)}
+
+ANÁLISIS:
+- Margen promedio: ${sold.length ? formatCurrency(totalProfit / sold.length) : "$0"}/cuenta
+- Días promedio para vender: ${avgDays} días
+- ROI total: ${totalInvested > 0 ? Math.round((totalProfit / (sold.reduce((s, a) => s + (a.purchasePrice || 0), 0) || 1)) * 100) : 0}%
+- Correos en bodega: ${emailsAvail} disponibles, ${emailsUsed} usados
+
+${topBuyers.length > 0 ? `TOP COMPRADORES:\n${topBuyers.map(([name, d]) => `- ${name}: ${d.count} compras, ${formatCurrency(d.total)} total`).join("\n")}` : ""}
+
+${Object.keys(countryCounts).length > 0 ? `PAÍSES DISPONIBLES: ${Object.entries(countryCounts).map(([c, n]) => `${c} (${n})`).join(", ")}` : ""}
 
 CUENTAS DISPONIBLES (${available.length}):
 ${availableDetails || "Ninguna"}
 
-CUENTAS VENDIDAS (${sold.length}):
-${soldDetails || "Ninguna"}
-
-CUENTAS DESCALIFICADAS (${disq.length}):
-${disqDetails || "Ninguna"}
+CUENTAS VENDIDAS RECIENTES (últimas 10):
+${sold.slice(0, 10).map(a => `@${a.username} | Venta: ${formatCurrency(a.realSalePrice)} | Ganancia: ${formatCurrency(a.profit)} | Comprador: ${a.buyer || "?"} | ${a.soldDate || "—"}`).join("\n") || "Ninguna"}
 
 BODEGA DE CORREOS (${emailWarehouse.length}):
-${warehouseDetails || "Vacía"}
+${emailWarehouse.slice(0, 20).map(e => `${e.email} | ${e.used ? "USADA por @" + e.usedBy : "DISPONIBLE"}`).join("\n") || "Vacía"}
 
-METAS:
-${goalsDetails || "Sin metas"}
-
-INSTRUCCIONES:
-- Tienes acceso COMPLETO al inventario con todos los datos
-- Si preguntan por una cuenta específica (@usuario), busca en los datos y da toda la info
-- Si preguntan por credenciales (email, contraseña), proporciónalas
-- Si preguntan por estadísticas, calcula con los datos reales
-- Si preguntan recomendaciones de precio, basa tu análisis en los datos de ventas previas
-- Sé directo, conciso y útil. Usa emojis moderadamente.`
+═══ INSTRUCCIONES ═══
+- Tienes acceso COMPLETO al inventario. Puedes ver TODOS los datos de cada cuenta.
+- Si preguntan por una cuenta (@usuario), busca y da toda la info incluyendo credenciales
+- Si preguntan por estadísticas financieras, CALCULA con los datos reales
+- Si preguntan recomendaciones de precio, analiza el historial de ventas (margen promedio, país, seguidores)
+- Puedes dar consejos de estrategia: qué tipo de cuentas comprar, a qué precio, cómo mejorar el ROI
+- Si preguntan "cuánto he ganado", calcula con los datos de ventas
+- Si preguntan por un comprador específico, busca en el historial
+- Si preguntan por correos/emails, busca en la bodega
+- Sé directo y conciso. Usa emojis moderadamente. No inventes datos.`
   }
 
   const sendMessage = async () => {

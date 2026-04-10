@@ -11,6 +11,7 @@ export function toDbAccount(acc: Record<string, any>) {
   // Encode publicType as a special category entry
   const cats = (acc.categories || []).filter((c: string) => !c.startsWith("_pub:"))
   if (acc.publicType) cats.push(`_pub:${acc.publicType}`)
+
   return {
     username: acc.username,
     profile_name: acc.profileName,
@@ -20,7 +21,7 @@ export function toDbAccount(acc: Record<string, any>) {
     categories: cats,
     niche: acc.niche,
     screenshot: acc.screenshot,
-    notes: acc.notes,
+    notes: acc.notes || "",
     purchase_price: acc.purchasePrice ? Number(acc.purchasePrice) : 0,
     estimated_sale_price: acc.estimatedSalePrice ? Number(acc.estimatedSalePrice) : 0,
     real_sale_price: acc.realSalePrice ? Number(acc.realSalePrice) : 0,
@@ -41,6 +42,7 @@ export function fromDbAccount(row: Record<string, any>) {
   const pubEntry = allCats.find((c: string) => c.startsWith("_pub:"))
   const publicType = pubEntry ? pubEntry.replace("_pub:", "") : ""
   const categories = allCats.filter((c: string) => !c.startsWith("_pub:"))
+
   return {
     id: row.id,
     username: row.username || "",
@@ -52,6 +54,7 @@ export function fromDbAccount(row: Record<string, any>) {
     niche: row.niche || "",
     publicType,
     screenshot: row.screenshot || "",
+    statsImages: [] as string[], // Loaded separately from settings table
     notes: row.notes || "",
     purchasePrice: row.purchase_price || 0,
     estimatedSalePrice: row.estimated_sale_price || 0,
@@ -92,6 +95,31 @@ export const db = {
       .single()
     if (error) throw error
     return data?.screenshot
+  },
+
+  async getAccountStats(id: any): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", `stats_${id}`)
+        .single()
+      if (error) return []
+      return Array.isArray(data?.value) ? data.value : []
+    } catch {
+      return []
+    }
+  },
+
+  async setAccountStats(id: any, images: string[]) {
+    const { error } = await supabase
+      .from("settings")
+      .upsert({ key: `stats_${id}`, value: images }, { onConflict: "key" })
+    if (error) throw error
+  },
+
+  async deleteAccountStats(id: any) {
+    await supabase.from("settings").delete().eq("key", `stats_${id}`)
   },
 
   async addAccount(acc: Record<string, any>) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { ArrowLeft, Camera, ChevronRight, Check, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore, formatFollowers, formatCurrency } from "@/lib/store"
+import { db } from "@/lib/supabase"
 
 const steps = ["Capturas", "Datos", "Credenciales"] as const
 
@@ -31,6 +32,7 @@ export function AccountForm() {
     niche: editingAccount?.niche || "",
     publicType: editingAccount?.publicType || "",
     screenshot: editingAccount?.screenshot || "",
+    statsImages: editingAccount?.statsImages || [],
     notes: editingAccount?.notes || "",
     purchasePrice: editingAccount?.purchasePrice?.toString() || "",
     estimatedSalePrice: editingAccount?.estimatedSalePrice?.toString() || "",
@@ -219,9 +221,19 @@ export function AccountForm() {
     try {
       if (isEditing) {
         await updateAccount(editingAccount!.id, form)
+        // Save stats images separately
+        if (form.statsImages && form.statsImages.length > 0) {
+          await db.setAccountStats(editingAccount!.id, form.statsImages)
+        } else {
+          await db.deleteAccountStats(editingAccount!.id)
+        }
         notify("Cuenta actualizada")
       } else {
         const newAcc = await addAccount(form)
+        // Save stats images separately
+        if (form.statsImages && form.statsImages.length > 0) {
+          await db.setAccountStats(newAcc.id, form.statsImages)
+        }
         // Mark email as used in warehouse
         if (form.email) {
           const updated = emailWarehouse.map(e => e.email.toLowerCase() === form.email.toLowerCase() ? { ...e, used: true, usedBy: form.username } : e)
@@ -426,6 +438,37 @@ export function AccountForm() {
                 )}
               </>
             )}
+
+            {/* Stats Images */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">📊 Fotos de Estadísticas (opcional)</p>
+                <span className="text-[10px] text-muted-foreground">{form.statsImages?.length || 0} foto(s)</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(form.statsImages || []).map((si: string, idx: number) => (
+                  <div key={idx} className="relative">
+                    <img src={si} className="h-20 w-20 rounded-lg border border-border object-cover" />
+                    <button onClick={() => upd("statsImages", (form.statsImages || []).filter((_: any, i: number) => i !== idx))}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white text-[10px]">✕</button>
+                  </div>
+                ))}
+                <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-secondary/30 text-2xl text-muted-foreground active:scale-95">
+                  +
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
+                    const files = e.target.files
+                    if (!files) return
+                    const newImages: string[] = [...(form.statsImages || [])]
+                    for (let i = 0; i < files.length; i++) {
+                      const loaded = await loadImage(files[i])
+                      newImages.push(loaded)
+                    }
+                    upd("statsImages", newImages)
+                    e.target.value = ""
+                  }} />
+                </label>
+              </div>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button onClick={cancel} className="flex-1 rounded-xl bg-secondary py-3.5 font-medium text-muted-foreground">Cancelar</button>

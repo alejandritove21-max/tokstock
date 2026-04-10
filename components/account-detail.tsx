@@ -17,6 +17,10 @@ export function AccountDetail() {
   const [sellPrice, setSellPrice] = useState("")
   const [sellBuyer, setSellBuyer] = useState("")
   const [showImageModal, setShowImageModal] = useState(false)
+  const [modalImage, setModalImage] = useState("")
+  const [statsImages, setStatsImages] = useState<string[]>(a?.statsImages || [])
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [statsLoaded, setStatsLoaded] = useState(false)
   // Editable fields for sold accounts
   const [editingSoldInfo, setEditingSoldInfo] = useState(false)
   const [editPrice, setEditPrice] = useState("")
@@ -139,7 +143,7 @@ export function AccountDetail() {
             <button
               onClick={() => {
                 if (!imgRevealed) { setImgRevealed(true); return }
-                setShowImageModal(true)
+                setModalImage(loadedScreenshot); setShowImageModal(true)
               }}
               className="w-full"
             >
@@ -178,6 +182,53 @@ export function AccountDetail() {
           ) : null}
         </div>
       )}
+
+      {/* Stats Images */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">📊 Estadísticas</h3>
+          {!statsLoaded && (
+            <button onClick={async () => {
+              setLoadingStats(true)
+              try { const imgs = await db.getAccountStats(a.id); setStatsImages(imgs); } catch {}
+              setStatsLoaded(true); setLoadingStats(false)
+            }} className="text-[10px] font-semibold text-primary">
+              {loadingStats ? "Cargando..." : "Cargar"}
+            </button>
+          )}
+        </div>
+        {statsImages.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {statsImages.map((img, i) => (
+              <button key={i} onClick={() => { setModalImage(img); setShowImageModal(true) }}
+                className="shrink-0">
+                <img src={img} className="h-24 w-24 rounded-lg border border-border object-cover" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">{statsLoaded ? "Sin fotos de estadísticas" : "Toca 'Cargar' para ver"}</p>
+        )}
+        {statsImages.length > 0 && (
+          <button onClick={async () => {
+            const allImages = [loadedScreenshot, ...statsImages].filter(Boolean)
+            if (allImages.length === 0) { notify("No hay imágenes", "error"); return }
+            if (navigator.share && navigator.canShare) {
+              try {
+                const files = await Promise.all(allImages.map(async (img, i) => {
+                  const res = await fetch(img)
+                  const blob = await res.blob()
+                  return new File([blob], `${a.username}_${i === 0 ? "perfil" : "stats_" + i}.jpg`, { type: "image/jpeg" })
+                }))
+                if (navigator.canShare({ files })) { await navigator.share({ files, title: `@${a.username}` }); return }
+              } catch (e: any) { if (e.name === "AbortError") return }
+            }
+            notify("No se pueden compartir en este dispositivo", "error")
+          }} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-2.5 text-xs font-medium text-foreground">
+            📤 Compartir perfil + estadísticas
+          </button>
+        )}
+      </div>
 
       {/* Public Data */}
       <div className="rounded-2xl border border-border bg-card p-4">
@@ -360,12 +411,12 @@ export function AccountDetail() {
       </div>
 
       {/* Image Fullscreen Modal */}
-      {showImageModal && loadedScreenshot && (
+      {showImageModal && modalImage && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setShowImageModal(false)}>
           <button onClick={() => setShowImageModal(false)} className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white">
             <X className="h-5 w-5" />
           </button>
-          <img src={loadedScreenshot} alt="" className="max-h-[85vh] max-w-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          <img src={modalImage} alt="" className="max-h-[85vh] max-w-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
 
