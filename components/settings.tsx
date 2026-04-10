@@ -33,6 +33,7 @@ export function Settings() {
           { label: "Buscar Cuentas", tab: "buscar" },
           { label: "Metas", tab: "metas" },
           { label: "Bodega de Correos", tab: "bodega" },
+          { label: "Pagos Pendientes", tab: "pagos" },
           { label: "Difusión WhatsApp", tab: "difusion" },
         ].map(item => (
           <button key={item.tab} onClick={() => setActiveTab(item.tab)} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-all active:scale-[0.99]">

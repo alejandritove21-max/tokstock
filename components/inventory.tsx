@@ -11,7 +11,7 @@ const statusFilters = ["Todas", "Disponibles", "Vendidas", "Descalif."] as const
 export function Inventory() {
   const { accounts, categories, notify, updateAccount, whatsappTemplate, comboTemplate, setComboTemplate, comboSummaryTemplate, setComboSummaryTemplate } = useStore()
   const [search, setSearch] = useState("")
-  const [activeStatus, setActiveStatus] = useState<string>("Todas")
+  const [activeStatus, setActiveStatus] = useState<string>("Disponibles")
   const [activeCats, setActiveCats] = useState<string[]>([])
   const [selectionMode, setSelectionMode] = useState(false)
   const [selected, setSelected] = useState<any[]>([])

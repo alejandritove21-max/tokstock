@@ -69,6 +69,27 @@ export interface WhapiConfig {
   broadcastTemplate: string
 }
 
+export interface Provider {
+  id: string
+  name: string
+  type: "supplier" | "vendor"  // supplier = yo le debo (me da cuentas), vendor = me debe (le vendo)
+  notes: string
+  createdAt: string
+}
+
+export interface PendingPayment {
+  id: string
+  providerId: string
+  amount: number
+  description: string
+  date: string         // when it was registered (YYYY-MM-DD)
+  dueDate: string      // when it's due (YYYY-MM-DD, optional)
+  paid: boolean
+  paidDate: string     // when it was paid (YYYY-MM-DD)
+  accountIds: string[] // related account IDs (optional)
+  createdAt: string
+}
+
 interface AppState {
   // Navigation
   activeTab: string
@@ -91,6 +112,8 @@ interface AppState {
   comboSummaryTemplate: string
   goals: Goal[]
   emailWarehouse: WarehouseEmail[]
+  providers: Provider[]
+  pendingPayments: PendingPayment[]
   darkMode: boolean
   loadSettings: () => Promise<void>
   saveSetting: (key: string, value: any) => Promise<void>
@@ -102,6 +125,8 @@ interface AppState {
   setComboSummaryTemplate: (v: string) => void
   setGoals: (v: Goal[]) => void
   setEmailWarehouse: (v: WarehouseEmail[]) => void
+  setProviders: (v: Provider[]) => void
+  setPendingPayments: (v: PendingPayment[]) => void
   setDarkMode: (v: boolean) => void
 
   // Whapi
@@ -285,6 +310,8 @@ export const useStore = create<AppState>((set, get) => ({
   comboSummaryTemplate: "━━━━━━━━━━━━━━━━━━\n📊 *RESUMEN COMBO*\n🔢 Cuentas: {count}\n💰 Total: {total}\n📈 Ganancia: {profit}\n👤 Comprador: {buyer}\n━━━━━━━━━━━━━━━━━━",
   goals: [],
   emailWarehouse: [],
+  providers: [],
+  pendingPayments: [],
   darkMode: true,
 
   loadSettings: async () => {
@@ -300,6 +327,8 @@ export const useStore = create<AppState>((set, get) => ({
         db.getSetting("whapiConfig"),
         db.getSetting("comboTemplate"),
         db.getSetting("comboSummaryTemplate"),
+        db.getSetting("providers"),
+        db.getSetting("pendingPayments"),
       ])
       const val = (i: number) => results[i].status === "fulfilled" ? (results[i] as any).value : null
         // Migrate old whapiConfig format to new multi-channel format
@@ -323,6 +352,8 @@ export const useStore = create<AppState>((set, get) => ({
           whapiConfig: whapiCfg,
           comboTemplate: typeof val(8) === "string" ? val(8) : get().comboTemplate,
           comboSummaryTemplate: typeof val(9) === "string" ? val(9) : get().comboSummaryTemplate,
+          providers: Array.isArray(val(10)) ? val(10) : [],
+          pendingPayments: Array.isArray(val(11)) ? val(11) : [],
         })
     } catch (e) {
       console.error("Failed to load settings:", e)
@@ -341,6 +372,8 @@ export const useStore = create<AppState>((set, get) => ({
   setComboSummaryTemplate: (v) => { set({ comboSummaryTemplate: v }); db.setSetting("comboSummaryTemplate", v) },
   setGoals: (v) => { set({ goals: v }); db.setSetting("goals", v) },
   setEmailWarehouse: (v) => { set({ emailWarehouse: v }); db.setSetting("emailWarehouse", v) },
+  setProviders: (v) => { set({ providers: v }); db.setSetting("providers", v) },
+  setPendingPayments: (v) => { set({ pendingPayments: v }); db.setSetting("pendingPayments", v) },
   setDarkMode: (v) => { set({ darkMode: v }); db.setSetting("theme", v ? "dark" : "light") },
 
   // Whapi

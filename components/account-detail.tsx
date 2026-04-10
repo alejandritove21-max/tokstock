@@ -305,6 +305,9 @@ export function AccountDetail() {
               a.status === "sold" ? ["Precio Real", formatCurrency(a.realSalePrice)] : null,
               a.status === "sold" ? ["Ganancia", formatCurrency(a.profit)] : null,
               a.buyer ? ["Comprador", a.buyer] : null,
+              a.status === "sold" && a.soldDate ? ["Fecha de venta", new Date(a.soldDate + "T12:00:00").toLocaleDateString("es-VE", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Caracas" })] : null,
+              a.status === "disqualified" && a.disqualifiedDate ? ["Fecha descalif.", new Date(a.disqualifiedDate + "T12:00:00").toLocaleDateString("es-VE", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Caracas" })] : null,
+              a.createdAt ? ["Fecha agregada", new Date(a.createdAt).toLocaleDateString("es-VE", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Caracas" })] : null,
             ].filter(Boolean).map(([label, val]: any) => (
               <div key={label} className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
                 <span className="text-xs text-muted-foreground">{label}</span>

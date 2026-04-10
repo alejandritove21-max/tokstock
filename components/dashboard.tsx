@@ -211,7 +211,7 @@ export function Dashboard() {
         {[
           { label: "Buscar", icon: "🔍", tab: "buscar" },
           { label: "Reportes", icon: "📊", tab: "reportes" },
-          { label: "Bodega", icon: "📧", tab: "bodega" },
+          { label: "Pagos", icon: "💳", tab: "pagos" },
           { label: "Chat IA", icon: "🤖", tab: "chatbot" },
         ].map(b => (
           <button key={b.tab} onClick={() => setActiveTab(b.tab)} className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-3 transition-all active:scale-95">

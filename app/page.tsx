@@ -14,6 +14,7 @@ import { SearchView } from "@/components/search-view"
 import { Settings } from "@/components/settings"
 import { Broadcast } from "@/components/broadcast"
 import { ChatBot } from "@/components/chatbot"
+import { PendingPayments } from "@/components/pending-payments"
 import { Notification } from "@/components/notification"
 import { LoadingScreen } from "@/components/loading-screen"
 
@@ -90,6 +91,7 @@ export default function Home() {
       case "bodega": return <EmailWarehouse />
       case "difusion": return <Broadcast />
       case "chatbot": return <ChatBot />
+      case "pagos": return <PendingPayments />
       default: return <Dashboard />
     }
   }
