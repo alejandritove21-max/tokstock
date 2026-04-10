@@ -69,6 +69,7 @@ export function fromDbAccount(row: Record<string, any>) {
     disqualifiedDate: row.disqualified_date || null,
     buyer: row.buyer || "",
     createdAt: row.created_at || "",
+    updatedAt: row.updated_at || row.created_at || "",
   }
 }
 

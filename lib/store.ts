@@ -31,6 +31,7 @@ export interface Account {
   disqualifiedDate: string | null
   buyer: string
   createdAt: string
+  updatedAt: string
 }
 
 export interface Goal {
@@ -147,15 +148,26 @@ export const useStore = create<AppState>((set, get) => ({
   loading: true,
   loadAccounts: async () => {
     try {
-      const fields = "id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at"
+      const baseFields = "id, username, profile_name, followers, profile_link, country, categories, niche, notes, purchase_price, estimated_sale_price, real_sale_price, profit, email, tiktok_password, email_password, email_password_same, status, sold_date, disqualified_date, buyer, created_at"
 
-      // Load ALL accounts WITHOUT screenshots first (fast, lightweight)
-      const { data: allData } = await supabase
-        .from("accounts")
-        .select(fields)
-        .order("created_at", { ascending: false })
+      // Try with updated_at first, fallback without it
+      let allData: any[] = []
+      try {
+        const { data, error } = await supabase
+          .from("accounts")
+          .select(baseFields + ", updated_at")
+          .order("created_at", { ascending: false })
+        if (error) throw error
+        allData = data || []
+      } catch {
+        const { data } = await supabase
+          .from("accounts")
+          .select(baseFields)
+          .order("created_at", { ascending: false })
+        allData = data || []
+      }
 
-      const all = (allData || []).map(fromDbAccount)
+      const all = allData.map(fromDbAccount)
       set({ accounts: all, loading: false })
 
       // Sync email warehouse: mark used emails based on actual accounts

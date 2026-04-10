@@ -3,20 +3,25 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { useStore, formatCurrency, formatFollowers, today, toVenezuelaKey, venezuelaDaysAgo, isOnOrAfter, type Account } from "@/lib/store"
-import { Clock, TrendingUp, TrendingDown, Calendar } from "lucide-react"
+import { Clock, RefreshCw, Calendar } from "lucide-react"
 
 export function Reports() {
-  const { accounts } = useStore()
+  const { accounts, loadAccounts } = useStore()
   const [tab, setTab] = useState<string>("30 días")
+  const [refreshing, setRefreshing] = useState(false)
   const todayKey = today()
 
-  // ── 30 day cycle countdown ──
-  const now = new Date()
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endOfCycle = new Date(firstOfMonth.getTime() + 30 * 86400000)
-  const daysLeft = Math.max(0, Math.ceil((endOfCycle.getTime() - now.getTime()) / 86400000))
-  const daysPassed = 30 - daysLeft
-  const cycleProgress = (daysPassed / 30) * 100
+  const refresh = async () => {
+    setRefreshing(true)
+    await loadAccounts()
+    setRefreshing(false)
+  }
+
+  // ── 30 day rolling window (not a fixed cycle) ──
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const rangeStart = thirtyDaysAgo.toLocaleDateString("es-VE", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Caracas" })
+  const rangeEnd = new Date().toLocaleDateString("es-VE", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Caracas" })
 
   // ── Helpers ──
   const soldInRange = (start: string) => accounts.filter(a => a.status === "sold" && isOnOrAfter(a.soldDate, start))
@@ -94,7 +99,13 @@ export function Reports() {
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-28 pt-4">
-      <h1 className="text-2xl font-bold">Reportes</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Reportes</h1>
+        <button onClick={refresh} disabled={refreshing} className="flex items-center gap-1 rounded-full bg-secondary px-3 py-1.5 text-[10px] font-medium text-muted-foreground">
+          <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
+          {refreshing ? "..." : "Actualizar"}
+        </button>
+      </div>
 
       {/* Tab Selector */}
       <div className="flex gap-1 rounded-xl bg-secondary p-1">
@@ -108,32 +119,32 @@ export function Reports() {
       {/* ═══ 30 DÍAS ═══ */}
       {tab === "30 días" && (
         <>
-          {/* Countdown + main metric */}
+          {/* Main metric with date range */}
           <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-5">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Ciclo Actual — Últimos 30 Días</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Últimos 30 Días</p>
               <div className="flex items-center gap-1.5 rounded-full bg-secondary/80 px-2.5 py-1">
                 <Clock className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[10px] font-bold">{daysLeft} días restantes</span>
+                <span className="text-[10px] font-bold">Ventana móvil</span>
               </div>
             </div>
             <p className={cn("text-4xl font-bold", m30.net >= 0 ? "text-primary" : "text-destructive")}>
               {m30.net >= 0 ? "+" : ""}{formatCurrency(m30.net)}
             </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              📅 {rangeStart} — {rangeEnd}
+            </p>
             {profitPrev !== 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                vs anterior: <span className={cn("font-semibold", profitChange >= 0 ? "text-primary" : "text-destructive")}>
+              <p className="mt-2 text-xs text-muted-foreground">
+                vs 30 días anteriores: <span className={cn("font-semibold", profitChange >= 0 ? "text-primary" : "text-destructive")}>
                   {profitChange >= 0 ? "↑" : "↓"} {formatCurrency(Math.abs(profitChange))}
                 </span>
               </p>
             )}
-            {/* Progress bar */}
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary/50">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${cycleProgress}%` }} />
-            </div>
-            <div className="mt-1 flex justify-between text-[9px] text-muted-foreground">
-              <span>Día {daysPassed} de 30</span>
-              <span>{daysLeft === 0 ? "¡Ciclo completado!" : `${daysLeft}d para reinicio`}</span>
+            <div className="mt-3 rounded-lg bg-secondary/50 p-2">
+              <p className="text-[9px] text-muted-foreground leading-relaxed">
+                💡 Se muestran los datos de las últimas 4 semanas desde hoy. El cálculo se actualiza automáticamente cada día (ventana móvil).
+              </p>
             </div>
           </div>
 
@@ -156,7 +167,7 @@ export function Reports() {
             <div className="my-2 border-t border-border/50" />
             <Row label="Invertido en compras" value={formatCurrency(m30.invested)} />
             <Row label="Promedio ganancia/cuenta" value={formatCurrency(m30.avgProfit)} />
-            <Row label="Promedio/día" value={formatCurrency(daysPassed > 0 ? m30.net / daysPassed : 0)} />
+            <Row label="Promedio/día (30d)" value={formatCurrency(m30.net / 30)} />
           </div>
 
           {/* Best/Worst sale */}

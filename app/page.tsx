@@ -23,6 +23,23 @@ export default function Home() {
   useEffect(() => {
     loadAccounts()
     loadSettings()
+
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(() => {
+      loadAccounts()
+    }, 60000)
+
+    // Refresh when window regains focus (user comes back to tab)
+    const onFocus = () => { loadAccounts() }
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) loadAccounts()
+    })
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [])
 
   if (loading) return <LoadingScreen />

@@ -11,25 +11,32 @@ interface Message {
 }
 
 export function ChatBot() {
-  const { accounts, goals, emailWarehouse, categories, countries, setActiveTab, whatsappTemplate, aiProviders } = useStore()
+  const { accounts, goals, emailWarehouse, categories, countries, setActiveTab, whatsappTemplate, aiProviders, loadAccounts } = useStore()
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "¡Hola! Soy el asistente de TokStock. Tengo acceso completo a tu inventario. Puedo ayudarte con:\n\n• Info detallada de cualquier cuenta (credenciales, precios, fechas)\n• Estadísticas y reportes financieros\n• Estado de la bodega de correos\n• Metas y progreso\n• Recomendaciones de precios\n• Cualquier pregunta sobre la app\n\n¿En qué te puedo ayudar?" }
+    { role: "assistant", content: "¡Hola! Soy TokBot, el asistente de TokStock. Tengo acceso completo y actualizado a tu inventario. Puedo ayudarte con:\n\n• Info detallada de cualquier cuenta (credenciales, precios, fechas)\n• Estadísticas y reportes financieros en tiempo real\n• Estado de la bodega de correos\n• Metas y progreso\n• Recomendaciones de precios basadas en historial\n• Estrategias del negocio\n\n¿En qué te puedo ayudar?" }
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
   }, [messages])
 
-  const buildContext = () => {
-    const available = accounts.filter(a => a.status === "available")
-    const sold = accounts.filter(a => a.status === "sold")
-    const disq = accounts.filter(a => a.status === "disqualified")
+  // Refresh data when opening chatbot
+  useEffect(() => {
+    loadAccounts()
+  }, [])
+
+  const buildContext = (freshAccounts?: any[]) => {
+    const acctList = freshAccounts || accounts
+    const available = acctList.filter(a => a.status === "available")
+    const sold = acctList.filter(a => a.status === "sold")
+    const disq = acctList.filter(a => a.status === "disqualified")
     const totalRevenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
     const totalProfit = sold.reduce((s, a) => s + ((a.realSalePrice || 0) - (a.purchasePrice || 0)), 0)
-    const totalInvested = accounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)
+    const totalInvested = acctList.reduce((s, a) => s + (a.purchasePrice || 0), 0)
     const totalInvestedAvailable = available.reduce((s, a) => s + (a.purchasePrice || 0), 0)
     const totalEstimatedValue = available.reduce((s, a) => s + (a.estimatedSalePrice || 0), 0)
     const emailsAvail = emailWarehouse.filter(e => !e.used).length
@@ -105,7 +112,7 @@ INVENTARIO:
 - Disponibles: ${available.length} cuentas (inversión: ${formatCurrency(totalInvestedAvailable)}, valor estimado: ${formatCurrency(totalEstimatedValue)})
 - Vendidas: ${sold.length} cuentas (ingresos: ${formatCurrency(totalRevenue)}, ganancia: ${formatCurrency(totalProfit)})
 - Descalificadas: ${disq.length} cuentas (pérdida: ${formatCurrency(disq.reduce((s, a) => s + (a.purchasePrice || 0), 0))})
-- Total: ${accounts.length} cuentas
+- Total: ${acctList.length} cuentas
 
 ÚLTIMOS 30 DÍAS:
 - Vendidas: ${sold30.length} | Ganancia: ${formatCurrency(profit30)} | Pérdidas: ${formatCurrency(loss30)} | Neto: ${formatCurrency(profit30 - loss30)}
@@ -155,9 +162,14 @@ ${emailWarehouse.slice(0, 20).map(e => `${e.email} | ${e.used ? "USADA por @" + 
     setInput("")
     setLoading(true)
 
+    // Force reload accounts to get latest data from Supabase before building context
+    try { await loadAccounts() } catch {}
+
     try {
       const isClaude = provider.name.toLowerCase().includes("claude") || provider.name.toLowerCase().includes("anthropic")
-      const context = buildContext()
+      // Build context with FRESH data read directly from store (not closure)
+      const freshState = useStore.getState()
+      const context = buildContext(freshState.accounts)
 
       const history = messages
         .filter((m, i) => !(i === 0 && m.role === "assistant"))
