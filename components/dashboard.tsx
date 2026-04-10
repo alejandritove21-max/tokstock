@@ -1,100 +1,167 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TrendingUp, TrendingDown, Package, DollarSign, AlertCircle, Wifi } from "lucide-react"
+import { TrendingUp, TrendingDown, Package, DollarSign, AlertCircle, Wifi, Clock, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useStore, formatCurrency, formatFollowers, today, venezuelaDateStr, venezuelaDaysAgo, isOnOrAfter, type Account } from "@/lib/store"
+import { useStore, formatCurrency, formatFollowers, today, venezuelaDateStr, venezuelaDaysAgo, isOnOrAfter, toVenezuelaKey, type Account } from "@/lib/store"
 import { AccountCard } from "./account-card"
 
-const periods = [
-  { key: "today", label: "Hoy" },
-  { key: "7d", label: "7 Días" },
-  { key: "30d", label: "30 Días" },
-  { key: "90d", label: "90 Días" },
-]
-
-function calcStats(accounts: Account[], periodKey: string) {
-  const startKey = periodKey === "today" ? today()
-    : periodKey === "7d" ? venezuelaDaysAgo(7)
-    : periodKey === "30d" ? venezuelaDaysAgo(30)
-    : venezuelaDaysAgo(90)
-
-  const sold = accounts.filter(a => a.status === "sold" && isOnOrAfter(a.soldDate, startKey))
-  const disq = accounts.filter(a => a.status === "disqualified" && isOnOrAfter(a.disqualifiedDate, startKey))
-  const revenue = sold.reduce((s, a) => s + (a.realSalePrice || 0), 0)
-  const costSold = sold.reduce((s, a) => s + (a.purchasePrice || 0), 0)
-  const profit = revenue - costSold
-  const lossAmount = disq.reduce((s, a) => s + (a.purchasePrice || 0), 0)
-  const cashflow = profit - lossAmount
-  return { sold: sold.length, disq: disq.length, revenue, profit, lossAmount, cashflow }
-}
-
 export function Dashboard() {
-  const { accounts, goals, setActiveTab } = useStore()
-  const [period, setPeriod] = useState("7d")
-  const [locationInfo, setLocationInfo] = useState<{ country: string; flag: string; ip: string } | null>(null)
+  const { accounts, goals, setActiveTab, setSelectedAccount } = useStore()
 
-  const now = new Date()
   const dateStr = venezuelaDateStr()
+  const todayKey = today()
 
   const available = accounts.filter(a => a.status === "available")
   const soldAll = accounts.filter(a => a.status === "sold")
   const disqAll = accounts.filter(a => a.status === "disqualified")
-  const invested = accounts.reduce((s, a) => s + (a.purchasePrice || 0), 0)
-  const totalProfit = soldAll.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
-    - disqAll.reduce((s, a) => s + (a.purchasePrice || 0), 0)
+  const invested = available.reduce((s, a) => s + (a.purchasePrice || 0), 0)
+  const estimatedValue = available.reduce((s, a) => s + (a.estimatedSalePrice || 0), 0)
+  const totalProfit = soldAll.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0) - disqAll.reduce((s, a) => s + (a.purchasePrice || 0), 0)
 
-  const stats = calcStats(accounts, period)
-  const recent = accounts.slice(0, 5)
+  // 30 day cycle
+  const sold30 = soldAll.filter(a => isOnOrAfter(a.soldDate, venezuelaDaysAgo(30)))
+  const profit30 = sold30.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
+  const loss30 = disqAll.filter(a => isOnOrAfter(a.disqualifiedDate, venezuelaDaysAgo(30))).reduce((s, a) => s + (a.purchasePrice || 0), 0)
 
-  useEffect(() => {
-    fetch("https://ipapi.co/json/")
-      .then(r => r.json())
-      .then(d => setLocationInfo({ country: d.country_name, flag: d.country_code, ip: d.ip }))
-      .catch(() => {})
-  }, [])
+  // Today stats
+  const soldToday = soldAll.filter(a => toVenezuelaKey(a.soldDate) === todayKey)
+  const addedToday = accounts.filter(a => toVenezuelaKey(a.createdAt) === todayKey)
+  const profitToday = soldToday.reduce((s, a) => s + (a.realSalePrice || 0) - (a.purchasePrice || 0), 0)
+
+  // Last sale
+  const lastSale = soldAll.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""))[0]
+  const lastSaleProfit = lastSale ? (lastSale.realSalePrice || 0) - (lastSale.purchasePrice || 0) : 0
+
+  // Last added accounts
+  const lastAdded = accounts.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 5)
+
+  // Days left in 30 day cycle (resets based on first of current month)
+  const now = new Date()
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const endOfCycle = new Date(firstOfMonth.getTime() + 30 * 86400000)
+  const daysLeft = Math.max(0, Math.ceil((endOfCycle.getTime() - now.getTime()) / 86400000))
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-28 pt-4">
       {/* Header */}
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs capitalize text-muted-foreground">{dateStr}</p>
-          {locationInfo && (
-            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1">
-                <span className="text-base">{locationInfo.flag === "VE" ? "🇻🇪" : "🌍"}</span>
-                <span>{locationInfo.country}</span>
-              </span>
-              <span className="font-mono text-[10px]">{locationInfo.ip}</span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">v2.0</span>
-          <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">
-            <Wifi className="h-3 w-3" />
-            <span>Sync</span>
-          </div>
-        </div>
+      <header>
+        <p className="text-xs capitalize text-muted-foreground">{dateStr}</p>
+        <h1 className="mt-1 text-2xl font-bold">TokStock</h1>
       </header>
 
-      {/* Total Cash Flow */}
-      <div className="rounded-2xl border border-primary/20 bg-card p-5">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Flujo Neto de Caja — Total
+      {/* 30 Day Cycle Card */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Ganancia — Últimos 30 Días</p>
+          <span className="flex items-center gap-1 rounded-full bg-secondary/80 px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+            <Clock className="h-3 w-3" /> {daysLeft}d restantes
+          </span>
+        </div>
+        <p className={cn("mt-2 text-4xl font-bold", profit30 - loss30 >= 0 ? "text-primary" : "text-destructive")}>
+          {profit30 - loss30 >= 0 ? "+" : ""}{formatCurrency(profit30 - loss30)}
         </p>
-        <p className={cn("mt-2 text-4xl font-bold", totalProfit >= 0 ? "text-primary" : "text-destructive")}>
-          {formatCurrency(totalProfit)}
-        </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Ingresos - Costos - Pérdidas
-        </p>
+        <div className="mt-2 flex gap-4 text-[10px] text-muted-foreground">
+          <span>{sold30.length} vendida(s)</span>
+          <span>·</span>
+          <span>Ganancia: {formatCurrency(profit30)}</span>
+          <span>·</span>
+          <span>Pérdida: {formatCurrency(loss30)}</span>
+        </div>
+        {/* Progress bar for 30 day cycle */}
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary/50">
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, ((30 - daysLeft) / 30) * 100)}%` }} />
+        </div>
+      </div>
+
+      {/* Quick stats */}
+      <div className="grid grid-cols-4 gap-2">
+        <QuickStat label="Disponibles" value={available.length.toString()} />
+        <QuickStat label="Vendidas" value={soldAll.length.toString()} />
+        <QuickStat label="Hoy" value={`+${formatCurrency(profitToday)}`} highlight={profitToday > 0} />
+        <QuickStat label="Invertido" value={formatCurrency(invested)} />
+      </div>
+
+      {/* Last Sale */}
+      {lastSale && (
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ShoppingBag className="h-4 w-4 text-primary" />
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Última Venta</h3>
+          </div>
+          <button onClick={() => setSelectedAccount(lastSale)} className="w-full text-left">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold">@{lastSale.username}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {lastSale.buyer || "?"} · {lastSale.soldDate || "—"} · {formatFollowers(lastSale.followers)} seg
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold">{formatCurrency(lastSale.realSalePrice)}</p>
+                <p className={cn("text-[10px] font-semibold", lastSaleProfit >= 0 ? "text-primary" : "text-destructive")}>
+                  {lastSaleProfit >= 0 ? "+" : ""}{formatCurrency(lastSaleProfit)}
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Today Activity */}
+      {(soldToday.length > 0 || addedToday.length > 0) && (
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Actividad Hoy</h3>
+          {soldToday.map((a, i) => (
+            <div key={`s${i}`} className="flex items-center justify-between border-b border-border/30 py-2 last:border-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">💰</span>
+                <div>
+                  <p className="text-xs font-medium">@{a.username} vendida</p>
+                  <p className="text-[10px] text-muted-foreground">→ {a.buyer || "?"}</p>
+                </div>
+              </div>
+              <p className="text-xs font-bold text-primary">+{formatCurrency((a.realSalePrice || 0) - (a.purchasePrice || 0))}</p>
+            </div>
+          ))}
+          {addedToday.map((a, i) => (
+            <div key={`a${i}`} className="flex items-center justify-between border-b border-border/30 py-2 last:border-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📦</span>
+                <div>
+                  <p className="text-xs font-medium">@{a.username} agregada</p>
+                  <p className="text-[10px] text-muted-foreground">{formatFollowers(a.followers)} seg · {a.country || "—"}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{formatCurrency(a.purchasePrice)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Inventory Summary */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Inventario</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-secondary/50 p-3 text-center">
+            <p className="text-[9px] text-muted-foreground">Invertido</p>
+            <p className="mt-1 text-lg font-bold">{formatCurrency(invested)}</p>
+          </div>
+          <div className="rounded-xl bg-primary/5 p-3 text-center">
+            <p className="text-[9px] text-muted-foreground">Valor Estimado</p>
+            <p className="mt-1 text-lg font-bold text-primary">{formatCurrency(estimatedValue)}</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Ganancia potencial</span>
+          <span className={cn("font-bold", estimatedValue - invested >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(estimatedValue - invested)}</span>
+        </div>
       </div>
 
       {/* Goals progress */}
       {Array.isArray(goals) && goals.length > 0 && (
         <div className="flex flex-col gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Metas</h3>
           {goals.map(g => {
             const earned = soldAll
               .filter(a => a.soldDate && new Date(a.soldDate) >= new Date(g.createdAt))
@@ -115,69 +182,12 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Period Selector */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold">Rendimiento por Período</h2>
-        <div className="flex gap-1 rounded-xl bg-secondary p-1">
-          {periods.map(p => (
-            <button
-              key={p.key}
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                "flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all",
-                period === p.key
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Period Cash Flow */}
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Flujo de Caja — {periods.find(p => p.key === period)?.label}
-            </p>
-            <p className={cn("mt-2 text-3xl font-bold", stats.cashflow >= 0 ? "text-primary" : "text-destructive")}>
-              {stats.cashflow >= 0 ? "+" : ""}{formatCurrency(stats.cashflow)}
-            </p>
-          </div>
-          <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl", stats.cashflow >= 0 ? "bg-primary/10" : "bg-destructive/10")}>
-            {stats.cashflow >= 0 ? <TrendingUp className="h-6 w-6 text-primary" /> : <TrendingDown className="h-6 w-6 text-destructive" />}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Package} label="Vendidas" value={stats.sold.toString()} sub="cuentas" color="blue" />
-        <StatCard icon={DollarSign} label="Ingresos" value={formatCurrency(stats.revenue)} sub="por ventas" color="green" />
-        <StatCard icon={TrendingUp} label="Ganancia" value={formatCurrency(stats.profit)} sub="neta" color="emerald" />
-        <StatCard icon={AlertCircle} label="Pérdidas" value={formatCurrency(stats.lossAmount)} sub={`${stats.disq} descalif.`} color="red" />
-      </div>
-
-      {/* Summary */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold">Resumen General</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <SummaryCard label="Disponibles" value={available.length.toString()} dotColor="bg-primary" />
-          <SummaryCard label="Vendidas" value={soldAll.length.toString()} dotColor="bg-blue-400" />
-          <SummaryCard label="Invertido" value={formatCurrency(invested)} dotColor="bg-yellow-400" />
-          <SummaryCard label="Descalif." value={disqAll.length.toString()} dotColor="bg-destructive" />
-        </div>
-      </div>
-
-      {/* Recent */}
-      {recent.length > 0 && (
+      {/* Last added accounts */}
+      {lastAdded.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-semibold">Recientes</h2>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Últimas Cuentas</h3>
           <div className="flex flex-col gap-2">
-            {recent.map(a => <AccountCard key={a.id} account={a} />)}
+            {lastAdded.map(a => <AccountCard key={a.id} account={a} />)}
           </div>
         </div>
       )}
@@ -186,15 +196,11 @@ export function Dashboard() {
       <div className="grid grid-cols-4 gap-2 pb-4">
         {[
           { label: "Buscar", icon: "🔍", tab: "buscar" },
-          { label: "Metas", icon: "🎯", tab: "metas" },
+          { label: "Reportes", icon: "📊", tab: "reportes" },
           { label: "Bodega", icon: "📧", tab: "bodega" },
           { label: "Chat IA", icon: "🤖", tab: "chatbot" },
         ].map(b => (
-          <button
-            key={b.tab}
-            onClick={() => setActiveTab(b.tab)}
-            className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-3 transition-all active:scale-95"
-          >
+          <button key={b.tab} onClick={() => setActiveTab(b.tab)} className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-3 transition-all active:scale-95">
             <span className="text-xl">{b.icon}</span>
             <span className="text-[10px] font-medium text-muted-foreground">{b.label}</span>
           </button>
@@ -204,29 +210,11 @@ export function Dashboard() {
   )
 }
 
-function StatCard({ icon: Icon, label, value, sub, color }: any) {
-  const dotColors: Record<string, string> = { blue: "bg-blue-400", green: "bg-primary", emerald: "bg-emerald-400", red: "bg-destructive" }
-  const textColors: Record<string, string> = { blue: "text-blue-400", green: "text-primary", emerald: "text-emerald-400", red: "text-destructive" }
+function QuickStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <div className={cn("h-2 w-2 rounded-full", dotColors[color])} />
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</span>
-      </div>
-      <p className={cn("mt-2 text-xl font-bold", textColors[color])}>{value}</p>
-      <p className="text-[10px] text-muted-foreground">{sub}</p>
-    </div>
-  )
-}
-
-function SummaryCard({ label, value, dotColor }: any) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <div className={cn("h-2 w-2 rounded-full", dotColor)} />
-      </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+    <div className={cn("rounded-xl border bg-card p-2.5 text-center", highlight ? "border-primary/30" : "border-border")}>
+      <p className="text-[8px] uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className={cn("mt-0.5 text-sm font-bold", highlight ? "text-primary" : "")}>{value}</p>
     </div>
   )
 }
