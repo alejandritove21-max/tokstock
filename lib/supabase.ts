@@ -8,9 +8,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 // ── Field mapping: camelCase (app) ↔ snake_case (DB) ──
 
 export function toDbAccount(acc: Record<string, any>) {
-  // Encode publicType as a special category entry
-  const cats = (acc.categories || []).filter((c: string) => !c.startsWith("_pub:"))
+  // Encode publicType and providerId as special category entries
+  const cats = (acc.categories || []).filter((c: string) => !c.startsWith("_pub:") && !c.startsWith("_prov:"))
   if (acc.publicType) cats.push(`_pub:${acc.publicType}`)
+  if (acc.providerId) cats.push(`_prov:${acc.providerId}`)
 
   return {
     username: acc.username,
@@ -41,7 +42,9 @@ export function fromDbAccount(row: Record<string, any>) {
   const allCats = Array.isArray(row.categories) ? row.categories : []
   const pubEntry = allCats.find((c: string) => c.startsWith("_pub:"))
   const publicType = pubEntry ? pubEntry.replace("_pub:", "") : ""
-  const categories = allCats.filter((c: string) => !c.startsWith("_pub:"))
+  const provEntry = allCats.find((c: string) => c.startsWith("_prov:"))
+  const providerId = provEntry ? provEntry.replace("_prov:", "") : ""
+  const categories = allCats.filter((c: string) => !c.startsWith("_pub:") && !c.startsWith("_prov:"))
 
   return {
     id: row.id,
@@ -68,6 +71,7 @@ export function fromDbAccount(row: Record<string, any>) {
     soldDate: row.sold_date || null,
     disqualifiedDate: row.disqualified_date || null,
     buyer: row.buyer || "",
+    providerId,
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || row.created_at || "",
   }

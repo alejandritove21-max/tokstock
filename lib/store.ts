@@ -30,6 +30,7 @@ export interface Account {
   soldDate: string | null
   disqualifiedDate: string | null
   buyer: string
+  providerId: string
   createdAt: string
   updatedAt: string
 }

@@ -7,7 +7,7 @@ import { useStore, formatCurrency, formatFollowers, today } from "@/lib/store"
 import { db } from "@/lib/supabase"
 
 export function AccountDetail() {
-  const { selectedAccount: a, setSelectedAccount, setEditingAccount, updateAccount, deleteAccount, setActiveTab, notify, whatsappTemplate, countries } = useStore()
+  const { selectedAccount: a, setSelectedAccount, setEditingAccount, updateAccount, deleteAccount, setActiveTab, notify, whatsappTemplate, countries, providers, pendingPayments, setPendingPayments } = useStore()
   const [showCreds, setShowCreds] = useState(false)
   const [imgRevealed, setImgRevealed] = useState(false)
   const [loadedScreenshot, setLoadedScreenshot] = useState(a?.screenshot || "")
@@ -16,6 +16,8 @@ export function AccountDetail() {
   const [confirmAction, setConfirmAction] = useState<string | null>(null)
   const [sellPrice, setSellPrice] = useState("")
   const [sellBuyer, setSellBuyer] = useState("")
+  const [sellVendorId, setSellVendorId] = useState("")
+  const [sellCreatePayment, setSellCreatePayment] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [modalImage, setModalImage] = useState("")
   const [statsImages, setStatsImages] = useState<string[]>(a?.statsImages || [])
@@ -63,8 +65,30 @@ export function AccountDetail() {
     // Then update account (async is fine now, WhatsApp already opened)
     await updateAccount(a.id, { ...a, status: "sold", realSalePrice: price, profit, soldDate: today(), buyer: sellBuyer.trim() })
 
-    notify(`Vendida por ${formatCurrency(price)} · Datos copiados`)
+    // Create pending payment if requested
+    if (sellCreatePayment && sellVendorId) {
+      const vendor = providers.find(p => p.id === sellVendorId)
+      if (vendor) {
+        const newPayment = {
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+          providerId: sellVendorId,
+          amount: price,
+          description: `Venta @${a.username}`,
+          date: today(),
+          dueDate: "",
+          paid: false,
+          paidDate: "",
+          accountIds: [String(a.id)],
+          createdAt: new Date().toISOString(),
+        }
+        setPendingPayments([...pendingPayments, newPayment])
+      }
+    }
+
+    notify(`Vendida por ${formatCurrency(price)}${sellCreatePayment ? " · Pago pendiente creado" : ""}`)
     setConfirmAction(null)
+    setSellVendorId("")
+    setSellCreatePayment(false)
   }
 
   const handleDisqualify = async () => {
@@ -431,10 +455,36 @@ export function AccountDetail() {
               <>
                 <h3 className="mb-4 text-lg font-bold">Vender @{a.username}</h3>
                 <input placeholder="Nombre del comprador" value={sellBuyer} onChange={e => setSellBuyer(e.target.value)} className="mb-3 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
-                <input type="number" placeholder="Precio de venta ($)" value={sellPrice} onChange={e => setSellPrice(e.target.value)} className="mb-4 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
-                {sellPrice && <p className="mb-4 text-center text-sm">Ganancia: <span className={cn("font-bold", Number(sellPrice) - a.purchasePrice >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(Number(sellPrice) - a.purchasePrice)}</span></p>}
+                <input type="number" placeholder="Precio de venta ($)" value={sellPrice} onChange={e => setSellPrice(e.target.value)} className="mb-3 w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+                {sellPrice && <p className="mb-3 text-center text-sm">Ganancia: <span className={cn("font-bold", Number(sellPrice) - a.purchasePrice >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(Number(sellPrice) - a.purchasePrice)}</span></p>}
+
+                {/* Pending payment toggle */}
+                <div className="mb-4 rounded-xl border border-border bg-secondary/50 p-3">
+                  <button onClick={() => setSellCreatePayment(!sellCreatePayment)} className="flex w-full items-center gap-2">
+                    <div className={cn("flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all", sellCreatePayment ? "border-primary bg-primary" : "border-muted-foreground")}>
+                      {sellCreatePayment && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    <span className="text-xs font-medium">Crear pago pendiente (vendedor me debe)</span>
+                  </button>
+                  {sellCreatePayment && (
+                    <div className="mt-3">
+                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Vendedor</label>
+                      <select value={sellVendorId} onChange={(e) => setSellVendorId(e.target.value)}
+                        className="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2 text-xs focus:border-primary focus:outline-none">
+                        <option value="">Seleccionar</option>
+                        {providers.filter(p => p.type === "vendor").map(p => (
+                          <option key={p.id} value={p.id}>💵 {p.name}</option>
+                        ))}
+                      </select>
+                      {providers.filter(p => p.type === "vendor").length === 0 && (
+                        <p className="mt-1 text-[10px] text-warning">No hay vendedores. Agrega uno en Pagos Pendientes.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex gap-3">
-                  <button onClick={() => setConfirmAction(null)} className="flex-1 rounded-xl bg-secondary py-3 font-medium text-muted-foreground">Cancelar</button>
+                  <button onClick={() => { setConfirmAction(null); setSellVendorId(""); setSellCreatePayment(false) }} className="flex-1 rounded-xl bg-secondary py-3 font-medium text-muted-foreground">Cancelar</button>
                   <button onClick={handleSell} className="flex-1 rounded-xl bg-primary py-3 font-medium text-primary-foreground">Confirmar</button>
                 </div>
               </>

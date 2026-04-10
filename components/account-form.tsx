@@ -9,7 +9,7 @@ import { db } from "@/lib/supabase"
 const steps = ["Capturas", "Datos", "Credenciales"] as const
 
 export function AccountForm() {
-  const { editingAccount, setEditingAccount, setActiveTab, addAccount, updateAccount, accounts, countries, categories, aiProviders, emailWarehouse, setEmailWarehouse, notify } = useStore()
+  const { editingAccount, setEditingAccount, setActiveTab, addAccount, updateAccount, accounts, countries, categories, aiProviders, emailWarehouse, setEmailWarehouse, providers, notify } = useStore()
 
   const isEditing = !!editingAccount
   const [step, setStep] = useState(0)
@@ -21,6 +21,7 @@ export function AccountForm() {
   const [verifyStatus, setVerifyStatus] = useState<"idle" | "checking" | "match" | "mismatch" | "error">("idle")
   const [verifyData, setVerifyData] = useState<any>(null)
   const [dupWarning, setDupWarning] = useState("")
+  const [emailSuggestions, setEmailSuggestions] = useState<any[]>([])
 
   const [form, setForm] = useState({
     username: editingAccount?.username || "",
@@ -40,9 +41,45 @@ export function AccountForm() {
     tiktokPassword: editingAccount?.tiktokPassword || "",
     emailPassword: editingAccount?.emailPassword || "",
     emailPasswordSame: editingAccount?.emailPasswordSame || false,
+    providerId: editingAccount?.providerId || "",
   })
 
   const upd = (key: string, val: any) => setForm(f => ({ ...f, [key]: val }))
+
+  // Calculate recommended price based on similar sold accounts
+  const recommendedPrice = (() => {
+    if (!form.followers || !form.country) return null
+    const followersNum = Number(form.followers) || 0
+    if (!followersNum) return null
+
+    const soldAccounts = accounts.filter(a => a.status === "sold" && a.realSalePrice)
+    if (soldAccounts.length === 0) return null
+
+    // Find similar: same country + similar follower range (±50%)
+    const minF = followersNum * 0.5
+    const maxF = followersNum * 1.5
+    let similar = soldAccounts.filter(a =>
+      a.country === form.country &&
+      a.followers >= minF && a.followers <= maxF
+    )
+
+    // Fallback: same country only
+    if (similar.length < 2) {
+      similar = soldAccounts.filter(a => a.country === form.country)
+    }
+    // Fallback: similar followers only
+    if (similar.length < 2) {
+      similar = soldAccounts.filter(a => a.followers >= minF && a.followers <= maxF)
+    }
+    // Last fallback: all sold
+    if (similar.length === 0) return null
+
+    const avg = similar.reduce((s, a) => s + (a.realSalePrice || 0), 0) / similar.length
+    const avgFollowers = similar.reduce((s, a) => s + a.followers, 0) / similar.length
+    // Adjust by follower ratio
+    const adjusted = avg * (followersNum / avgFollowers)
+    return { price: Math.round(adjusted), sample: similar.length }
+  })()
 
   // ── Image loading ──
   const loadImage = (file: File): Promise<string> => new Promise((resolve) => {
@@ -503,9 +540,42 @@ export function AccountForm() {
               <Field label="Precio Compra ($) *" placeholder="0.00" type="number" value={form.purchasePrice} onChange={(v) => upd("purchasePrice", v)} />
               <Field label="Precio Venta Est. ($)" placeholder="0.00" type="number" value={form.estimatedSalePrice} onChange={(v) => upd("estimatedSalePrice", v)} />
             </div>
+
+            {/* Recommended price */}
+            {recommendedPrice && !form.estimatedSalePrice && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold text-muted-foreground">💡 PRECIO RECOMENDADO</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(recommendedPrice.price)}</p>
+                    <p className="text-[10px] text-muted-foreground">Basado en {recommendedPrice.sample} venta(s) similares</p>
+                  </div>
+                  <button onClick={() => upd("estimatedSalePrice", recommendedPrice.price.toString())}
+                    className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">
+                    Usar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {margin !== null && (
               <p className="text-center text-xs">Margen estimado: <span className={cn("font-bold", margin >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(margin)}</span></p>
             )}
+
+            {/* Provider selector */}
+            <div>
+              <label className="mb-2 block text-sm text-muted-foreground">Proveedor (quien me dio esta cuenta)</label>
+              <select value={form.providerId} onChange={(e) => upd("providerId", e.target.value)}
+                className="w-full appearance-none rounded-xl border border-border bg-secondary px-4 py-3 text-sm focus:border-primary focus:outline-none">
+                <option value="">Sin proveedor</option>
+                {providers.filter(p => p.type === "supplier").map(p => (
+                  <option key={p.id} value={p.id}>📦 {p.name}</option>
+                ))}
+              </select>
+              {providers.filter(p => p.type === "supplier").length === 0 && (
+                <p className="mt-1 text-[10px] text-muted-foreground">Puedes agregar proveedores en Ajustes → Pagos Pendientes</p>
+              )}
+            </div>
 
             <Field label="Nicho" placeholder="Entretenimiento, Cocina..." value={form.niche} onChange={(v) => upd("niche", v)} />
 
@@ -553,18 +623,57 @@ export function AccountForm() {
 
             <div>
               <label className="mb-2 block text-sm text-muted-foreground">Email</label>
-              <input placeholder="email@ejemplo.com" value={form.email}
-                onChange={(e) => {
-                  upd("email", e.target.value); checkDuplicate("email", e.target.value)
-                  const match = emailWarehouse.find(w => w.email.toLowerCase() === e.target.value.toLowerCase())
-                  if (match?.password) { upd("emailPassword", match.password); upd("emailPasswordSame", false) }
-                }}
-                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
+              <div className="relative">
+                <input placeholder="email@ejemplo.com" value={form.email}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    upd("email", val); checkDuplicate("email", val)
+                    // Exact match auto-fill password
+                    const match = emailWarehouse.find(w => w.email.toLowerCase() === val.toLowerCase())
+                    if (match?.password) { upd("emailPassword", match.password); upd("emailPasswordSame", false) }
+                    // Suggestions as user types
+                    if (val.length >= 1) {
+                      const q = val.toLowerCase()
+                      const matches = emailWarehouse
+                        .filter(w => w.email.toLowerCase().includes(q) && w.email.toLowerCase() !== q)
+                        .slice(0, 5)
+                      setEmailSuggestions(matches)
+                    } else {
+                      setEmailSuggestions([])
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setEmailSuggestions([]), 200)}
+                  className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none" />
 
-              {/* Warehouse suggestions */}
+                {/* Autocomplete dropdown */}
+                {emailSuggestions.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card shadow-lg">
+                    {emailSuggestions.map((w: any, i: number) => (
+                      <button
+                        key={i}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          upd("email", w.email)
+                          if (w.password) { upd("emailPassword", w.password); upd("emailPasswordSame", false) }
+                          checkDuplicate("email", w.email)
+                          setEmailSuggestions([])
+                        }}
+                        className="flex w-full items-center justify-between border-b border-border/30 px-3 py-2 text-left text-xs last:border-0 hover:bg-secondary/50"
+                      >
+                        <span className="truncate">{w.email}</span>
+                        <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold", w.used ? "bg-blue-500/10 text-blue-400" : "bg-primary/10 text-primary")}>
+                          {w.used ? "Usada" : "Disp."}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Warehouse suggestions (shown when empty) */}
               {emailWarehouse.filter(w => !w.used).length > 0 && !form.email && (
                 <div className="mt-2">
-                  <p className="mb-1.5 text-[10px] font-semibold text-muted-foreground">📧 Correos de bodega:</p>
+                  <p className="mb-1.5 text-[10px] font-semibold text-muted-foreground">📧 Correos disponibles en bodega:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {emailWarehouse.filter(w => !w.used).slice(0, 6).map((w, i) => (
                       <button key={i} onClick={() => {
